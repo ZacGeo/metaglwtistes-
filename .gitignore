@@ -1,1 +1,9 @@
 *.targets
+*.xsl
+/data
+FlexLexer.h
+UNISTD_ERROR.readme
+win_bison.exe
+win_flex.exe
+/custom_build_rules/Bison
+/custom_build_rules
