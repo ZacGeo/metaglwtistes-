@@ -46,17 +46,64 @@ extern int yydebug;
    /* Put the tokens into the symbol table, so that GDB and other debuggers
       know about them.  */
    enum yytokentype {
-     INT = 258,
-     FLOAT = 259,
-     PLUS = 260,
-     MINUS = 261,
-     ASSIGN = 262,
-     SEMI = 263,
-     LPAREN = 264,
-     RPAREN = 265,
-     ICONST = 266,
-     FCONST = 267,
-     ID = 268
+     TYPEDEF = 258,
+     CHAR = 259,
+     INT = 260,
+     FLOAT = 261,
+     STRING = 262,
+     CONST = 263,
+     CLASS = 264,
+     PRIVATE = 265,
+     PROTECTED = 266,
+     PUBLIC = 267,
+     VOID = 268,
+     STATIC = 269,
+     UNION = 270,
+     ENUM = 271,
+     LIST = 272,
+     CONTINUE = 273,
+     BREAK = 274,
+     IF = 275,
+     ELSE = 276,
+     WHILE = 277,
+     FOR = 278,
+     RETURN = 279,
+     LENGTH = 280,
+     CIN = 281,
+     COUT = 282,
+     MAIN = 283,
+     THIS = 284,
+     SIZEOP = 285,
+     OROP = 286,
+     ANDOP = 287,
+     EQUOP = 288,
+     RELOP = 289,
+     ADDOP = 290,
+     MULOP = 291,
+     NOTOP = 292,
+     INCDEC = 293,
+     METH = 294,
+     INP = 295,
+     OUT = 296,
+     REFER = 297,
+     LPAREN = 298,
+     RPAREN = 299,
+     SEMI = 300,
+     DOT = 301,
+     COMMA = 302,
+     ASSIGN = 303,
+     COLON = 304,
+     LBRACK = 305,
+     RBRACK = 306,
+     LBRACE = 307,
+     RBRACE = 308,
+     ICONST = 309,
+     FCONST = 310,
+     CCONST = 311,
+     SCONST = 312,
+     ID = 313,
+     LISTFUNC = 314,
+     LOWER_THAN_ELSE = 315
    };
 #endif
 
@@ -65,15 +112,15 @@ extern int yydebug;
 typedef union YYSTYPE
 {
 /* Line 2058 of yacc.c  */
-#line 16 "parser.y"
+#line 43 "parser.y"
 
-    int ival;
-    float fval;
-    char* sval;
+    long long ival;
+    double fval;
+    char *sval;
 
 
 /* Line 2058 of yacc.c  */
-#line 77 "parser.tab.h"
+#line 124 "parser.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
