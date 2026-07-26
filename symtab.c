@@ -60,20 +60,20 @@ void symtab_enter_scope(const char *label)
 
 static void print_scope(Scope *s)
 {
-    printf("\n╔══ Scope [depth=%d]: %s ══\n", s->depth, s->label);
+    printf("\nScope [depth=%d]: %s\n", s->depth, s->label);
 
     int found = 0;
     for (int i = 0; i < HASH_SIZE; i++) {
         Symbol *sym = s->table[i];
         while (sym) {
-            printf("║  %-30s  (depth %d)\n", sym->name, sym->depth);
+            printf("  %-30s  (depth %d)\n", sym->name, sym->depth);
             found++;
             sym = sym->next;
         }
     }
     if (!found)
-        printf("║  (empty scope)\n");
-    printf("╚══════════════════════════════════════\n");
+        printf("  (empty scope)\n");
+    printf("\n");
 }
 
 static void free_scope(Scope *s)
