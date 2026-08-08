@@ -112,15 +112,19 @@ extern int yydebug;
 typedef union YYSTYPE
 {
 /* Line 2058 of yacc.c  */
-#line 43 "parser.y"
+#line 63 "parser.y"
 
     long long ival;
     double fval;
     char *sval;
+    Type *type;
+    AstNode *node;
+    DimList *dims;
+    DeclItem *decl;
 
 
 /* Line 2058 of yacc.c  */
-#line 124 "parser.tab.h"
+#line 128 "parser.tab.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

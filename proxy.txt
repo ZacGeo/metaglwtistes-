@@ -1,0 +1,2 @@
+ERROR: Could not find 64-bit executable.
+ERROR: C:/AMDDesignTools/2025.2/Vivado/bin/unwrapped/win64.o/xilproxy.exe does not exist

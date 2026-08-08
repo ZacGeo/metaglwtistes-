@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "diagnostics.h"
+#include "parser_types.h"
 #include "parser.tab.h"
 
 static int trace_tokens = 1;
@@ -21,6 +22,7 @@ static char *xstrdup(const char *text);
 static void string_reset(void);
 static void string_append(const char *text, size_t length);
 static int emit_token(int token, const char *name, const char *lexeme);
+static int emit_text_token(int token, const char *name, const char *lexeme);
 static double parse_based_float(const char *text, int base);
 
 void lexer_set_trace(int enabled)
@@ -266,25 +268,25 @@ LIST_FUNCTION   C(AD*|D+)R
                               }
 
  /* Long operators before their one-character prefixes. */
-<INITIAL>"||"                { STOP_AFTER_FIVE_ERRORS(); return emit_token(OROP, "OROP", yytext); }
-<INITIAL>"&&"                { STOP_AFTER_FIVE_ERRORS(); return emit_token(ANDOP, "ANDOP", yytext); }
-<INITIAL>"=="                { STOP_AFTER_FIVE_ERRORS(); return emit_token(EQUOP, "EQUOP", yytext); }
-<INITIAL>"!="                { STOP_AFTER_FIVE_ERRORS(); return emit_token(EQUOP, "EQUOP", yytext); }
-<INITIAL>">="                { STOP_AFTER_FIVE_ERRORS(); return emit_token(RELOP, "RELOP", yytext); }
-<INITIAL>"<="                { STOP_AFTER_FIVE_ERRORS(); return emit_token(RELOP, "RELOP", yytext); }
-<INITIAL>"++"                { STOP_AFTER_FIVE_ERRORS(); return emit_token(INCDEC, "INCDEC", yytext); }
-<INITIAL>"--"                { STOP_AFTER_FIVE_ERRORS(); return emit_token(INCDEC, "INCDEC", yytext); }
+<INITIAL>"||"                { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(OROP, "OROP", yytext); }
+<INITIAL>"&&"                { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(ANDOP, "ANDOP", yytext); }
+<INITIAL>"=="                { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(EQUOP, "EQUOP", yytext); }
+<INITIAL>"!="                { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(EQUOP, "EQUOP", yytext); }
+<INITIAL>">="                { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(RELOP, "RELOP", yytext); }
+<INITIAL>"<="                { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(RELOP, "RELOP", yytext); }
+<INITIAL>"++"                { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(INCDEC, "INCDEC", yytext); }
+<INITIAL>"--"                { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(INCDEC, "INCDEC", yytext); }
 <INITIAL>"::"                { STOP_AFTER_FIVE_ERRORS(); return emit_token(METH, "METH", yytext); }
 <INITIAL>">>"                { STOP_AFTER_FIVE_ERRORS(); return emit_token(INP, "INP", yytext); }
 <INITIAL>"<<"                { STOP_AFTER_FIVE_ERRORS(); return emit_token(OUT, "OUT", yytext); }
-<INITIAL>">"                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(RELOP, "RELOP", yytext); }
-<INITIAL>"<"                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(RELOP, "RELOP", yytext); }
-<INITIAL>"+"                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(ADDOP, "ADDOP", yytext); }
-<INITIAL>"-"                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(ADDOP, "ADDOP", yytext); }
-<INITIAL>"*"                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(MULOP, "MULOP", yytext); }
-<INITIAL>"/"                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(MULOP, "MULOP", yytext); }
-<INITIAL>"%"                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(MULOP, "MULOP", yytext); }
-<INITIAL>"!"                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(NOTOP, "NOTOP", yytext); }
+<INITIAL>">"                 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(RELOP, "RELOP", yytext); }
+<INITIAL>"<"                 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(RELOP, "RELOP", yytext); }
+<INITIAL>"+"                 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(ADDOP, "ADDOP", yytext); }
+<INITIAL>"-"                 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(ADDOP, "ADDOP", yytext); }
+<INITIAL>"*"                 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(MULOP, "MULOP", yytext); }
+<INITIAL>"/"                 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(MULOP, "MULOP", yytext); }
+<INITIAL>"%"                 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(MULOP, "MULOP", yytext); }
+<INITIAL>"!"                 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(NOTOP, "NOTOP", yytext); }
 <INITIAL>"("                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(LPAREN, "LPAREN", yytext); }
 <INITIAL>")"                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(RPAREN, "RPAREN", yytext); }
 <INITIAL>";"                 { STOP_AFTER_FIVE_ERRORS(); return emit_token(SEMI, "SEMI", yytext); }
@@ -370,6 +372,12 @@ static int emit_token(int token, const char *name, const char *lexeme)
         printf("[%s] line=%d lexeme=%s\n", name, yylineno, lexeme);
     }
     return token;
+}
+
+static int emit_text_token(int token, const char *name, const char *lexeme)
+{
+    yylval.sval = xstrdup(lexeme);
+    return emit_token(token, name, lexeme);
 }
 
 static int digit_value(int character)
