@@ -21,6 +21,8 @@ void lexer_set_trace(int enabled);
 void yyerror(const char *message);
 
 static char *pending_function_name = NULL;
+static char *pending_method_name = NULL;
+static Type *pending_method_owner = NULL;
 
 typedef struct PendingParameter {
     char *name;
@@ -34,9 +36,9 @@ static PendingParameter *pending_parameters_tail = NULL;
 static Type *pending_function_return_type = NULL;
 
 static Type *declaration_base_type = NULL;
-static SymbolKind declaration_symbol_kind = SYMBOL_VARIABLE;
+static long long next_enum_value = 0;
 
-static void declare_identifier(char *name);
+static void declare_enum_value(char *name, AstNode *initializer);
 static void discard_text(char *text);
 static void enter_named_scope(const char *kind, const char *name);
 static void remember_function(char *name);
@@ -53,8 +55,8 @@ static Type *apply_declarator(Type *base, int is_list, DimList *dimensions, int 
 static void dim_free(DimList *dimensions);
 static DeclItem *decl_new(char *name, int is_list, DimList *dimensions, int line);
 static DeclItem *decl_append(DeclItem *list, DeclItem *item);
-static void process_declarations(Type *base, DeclItem *items, SymbolKind kind,
-                                 StorageClass storage);
+static AstNode *process_declarations(Type *base, DeclItem *items, SymbolKind kind,
+                                     StorageClass storage);
 %}
 
 %error-verbose
@@ -97,6 +99,7 @@ static void process_declarations(Type *base, DeclItem *items, SymbolKind kind,
 %type <node> optexpr statement statements expression_statement if_statement
 %type <node> while_statement for_statement return_statement io_statement
 %type <node> in_list in_item out_list out_item comp_statement decl_statements
+%type <node> declarations local_declaration
 %type <decl> variabledef variabledefs init_variabledef init_variabledefs
 %type <node> function_body
 %type <ival> listspec decltype
@@ -179,7 +182,7 @@ dim
 
 const_declaration
     : CONST typename
-      { declaration_base_type = $2; declaration_symbol_kind = SYMBOL_CONSTANT; }
+      { declaration_base_type = $2; }
       constdefs SEMI
     ;
 
@@ -192,9 +195,11 @@ constdef
     : ID dims ASSIGN init_value
       {
           Type *type = apply_declarator(declaration_base_type, 0, $2, yylineno);
-          if (!type_assignable(type, $4->type))
-              semantic_error(yylineno, "initializer of constant '%s' has incompatible type", $1);
-          semantic_declare($1, SYMBOL_CONSTANT, type, STORAGE_NONE, yylineno, 1);
+          Symbol *symbol;
+          semantic_validate_initializer(type, $4, $1, yylineno);
+          symbol = semantic_declare($1, SYMBOL_CONSTANT, type,
+                                    STORAGE_NONE, yylineno, 1);
+          semantic_store_constant(symbol, $4, yylineno);
           dim_free($2);
           ast_free($4);
           discard_text($1);
@@ -203,7 +208,7 @@ constdef
 
 init_value
     : expression
-    | LBRACE init_values RBRACE { $$ = $2; }
+    | LBRACE init_values RBRACE { $$ = ast_init_list($2, yylineno); }
     ;
 
 init_values
@@ -270,7 +275,7 @@ postfix_expression
     | variable { $$ = $1; }
     | variable LPAREN expression_list RPAREN { $$ = semantic_call($1, $3, yylineno); }
     | LENGTH LPAREN general_expression RPAREN
-      { $$ = ast_unary("length", $3, type_int(), yylineno); }
+      { $$ = semantic_length($3, yylineno); }
     | constant { $$ = $1; }
     | LPAREN general_expression RPAREN { $$ = $2; }
     | LPAREN standard_type RPAREN
@@ -288,8 +293,7 @@ variable
       }
     | LISTFUNC LPAREN general_expression RPAREN
       {
-          $$ = ast_unary($1, $3, $3->type, yylineno);
-          $$->is_lvalue = 1;
+          $$ = semantic_list_function($1, $3, yylineno);
           discard_text($1);
       }
     | decltype ID
@@ -297,7 +301,7 @@ variable
           $$ = semantic_identifier($2, yylineno);
           discard_text($2);
       }
-    | THIS { $$ = semantic_identifier("this", yylineno); }
+    | THIS { $$ = semantic_this(yylineno); }
     ;
 
 general_expression
@@ -325,25 +329,14 @@ constant
     | FCONST { $$ = ast_float($1, yylineno); }
     | SCONST
       {
-          $$ = ast_text(AST_STRING, $1, type_string(), yylineno);
+          $$ = semantic_string_literal($1, yylineno);
           discard_text($1);
       }
     ;
 
 listexpression
     : LBRACK expression_list RBRACK
-      {
-          AstNode *element;
-          Type *base = NULL;
-          for (element = $2; element; element = element->next) {
-              if (!base) base = element->type;
-              else if (!type_assignable(base, element->type))
-                  semantic_error(yylineno, "list elements have incompatible types");
-          }
-          $$ = ast_new(AST_LIST, yylineno, NULL);
-          $$->type = type_list(base ? base : type_error());
-          $$->child[0] = $2;
-      }
+      { $$ = semantic_list_literal($2, yylineno); }
     ;
 
 enum_declaration
@@ -353,8 +346,9 @@ enum_declaration
           semantic_declare($2, SYMBOL_TYPE, type, STORAGE_NONE, yylineno, 1);
           enter_named_scope("enum", $2);
           symtab_set_scope_type(symtab_current_scope(), type);
-          declaration_symbol_kind = SYMBOL_ENUM_VALUE;
+          symtab_set_current_access(ACCESS_PUBLIC);
           declaration_base_type = type;
+          next_enum_value = 0;
           discard_text($2);
       }
       enum_body SEMI
@@ -375,13 +369,11 @@ enum_body
 id_list
     : id_list COMMA ID initializer
       {
-          declare_identifier($3);
-          ast_free($4);
+          declare_enum_value($3, $4);
       }
     | ID initializer
       {
-          declare_identifier($1);
-          ast_free($2);
+          declare_enum_value($1, $2);
       }
     ;
 
@@ -417,6 +409,13 @@ class_body
 parent
     : COLON ID
       {
+          Type *derived = symtab_current_owner_type();
+          Type *base = semantic_resolve_type($2, yylineno);
+          if (!derived || derived->kind != TYPE_CLASS || base->kind != TYPE_CLASS)
+              semantic_error(yylineno, "class inheritance requires a class base type");
+          if (derived == base || type_is_derived_from(base, derived))
+              semantic_error(yylineno, "cyclic class inheritance involving '%s'", derived->name);
+          symtab_set_class_parent(derived, base, yylineno);
           discard_text($2);
       }
     | /* empty */
@@ -428,9 +427,9 @@ members_methods
     ;
 
 access
-    : PRIVATE COLON
-    | PROTECTED COLON
-    | PUBLIC COLON
+    : PRIVATE COLON   { symtab_set_current_access(ACCESS_PRIVATE); }
+    | PROTECTED COLON { symtab_set_current_access(ACCESS_PROTECTED); }
+    | PUBLIC COLON    { symtab_set_current_access(ACCESS_PUBLIC); }
     | /* empty */
     ;
 
@@ -446,7 +445,7 @@ member
 
 var_declaration
     : typename variabledefs SEMI
-      { process_declarations($1, $2, SYMBOL_FIELD, STORAGE_MEMBER); }
+      { ast_free(process_declarations($1, $2, SYMBOL_FIELD, STORAGE_MEMBER)); }
     ;
 
 variabledefs
@@ -464,7 +463,8 @@ variabledef
 /* An anonymous union nested in a class exposes its fields in the surrounding
    class scope, so no additional symbol-table scope is opened here. */
 anonymous_union
-    : UNION union_body SEMI
+    : UNION { symtab_begin_anonymous_union(); } union_body SEMI
+      { symtab_end_anonymous_union(); }
     ;
 
 union_body
@@ -545,6 +545,7 @@ union_declaration
           semantic_declare($2, SYMBOL_TYPE, type, STORAGE_NONE, yylineno, 1);
           enter_named_scope("union", $2);
           symtab_set_scope_type(symtab_current_scope(), type);
+          symtab_set_current_access(ACCESS_PUBLIC);
           discard_text($2);
       }
       union_body SEMI
@@ -555,7 +556,7 @@ union_declaration
 
 global_var_declaration
     : typename init_variabledefs SEMI
-      { process_declarations($1, $2, SYMBOL_VARIABLE, STORAGE_GLOBAL); }
+      { ast_free(process_declarations($1, $2, SYMBOL_VARIABLE, STORAGE_GLOBAL)); }
     ;
 
 init_variabledefs
@@ -576,8 +577,11 @@ func_declaration
 full_func_declaration
     : full_par_func_header function_body
       {
-          printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
-          ast_print(stdout, $2, 0);
+          if (diagnostics_syntax_count() == 0) {
+              semantic_check_function_body($2, yylineno);
+              printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
+              ast_print(stdout, $2, 0);
+          }
           ast_free($2);
           finish_function_scope();
       }
@@ -588,8 +592,11 @@ full_func_declaration
       }
       function_body
       {
-          printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
-          ast_print(stdout, $3, 0);
+          if (diagnostics_syntax_count() == 0) {
+              semantic_check_function_body($3, yylineno);
+              printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
+              ast_print(stdout, $3, 0);
+          }
           ast_free($3);
           finish_function_scope();
       }
@@ -600,8 +607,11 @@ full_func_declaration
       }
       function_body
       {
-          printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
-          ast_print(stdout, $3, 0);
+          if (diagnostics_syntax_count() == 0) {
+              semantic_check_function_body($3, yylineno);
+              printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
+              ast_print(stdout, $3, 0);
+          }
           ast_free($3);
           finish_function_scope();
       }
@@ -625,15 +635,24 @@ full_par_func_header
 class_func_header_start
     : typename listspec func_class ID
       {
-          size_t length = strlen($3) + strlen($4) + 1;
+          Type *owner = semantic_resolve_type($3, yylineno);
+          size_t length = strlen($3) + strlen($4) + 3;
           char *qualified = malloc(length);
           if (!qualified) {
               fprintf(stderr, "Out of memory\n");
               exit(EXIT_FAILURE);
           }
-          snprintf(qualified, length, "%s%s", $3, $4);
+          if (owner->kind != TYPE_CLASS)
+              semantic_error(yylineno, "'%s' is not a class", $3);
+          snprintf(qualified, length, "%s::%s", $3, $4);
           pending_function_return_type = $2 ? type_list($1) : $1;
           remember_function(qualified);
+          pending_method_owner = owner;
+          pending_method_name = strdup($4);
+          if (!pending_method_name) {
+              fprintf(stderr, "Out of memory\n");
+              exit(EXIT_FAILURE);
+          }
           free(qualified);
           discard_text($3);
           discard_text($4);
@@ -643,14 +662,7 @@ class_func_header_start
 func_class
     : ID METH
       {
-          size_t length = strlen($1) + 3;
-          $$ = malloc(length);
-          if (!$$) {
-              fprintf(stderr, "Out of memory\n");
-              exit(EXIT_FAILURE);
-          }
-          snprintf($$, length, "%s::", $1);
-          discard_text($1);
+          $$ = $1;
       }
     ;
 
@@ -689,27 +701,28 @@ function_body
     ;
 
 decl_statements
-    : declarations statements { $$ = $2; }
-    | declarations { $$ = NULL; }
+    : declarations statements { $$ = ast_append($1, $2); }
+    | declarations { $$ = $1; }
     | statements { $$ = $1; }
     | /* empty */ { $$ = NULL; }
     ;
 
 declarations
-    : declarations local_declaration
-    | local_declaration
+    : declarations local_declaration { $$ = ast_append($1, $2); }
+    | local_declaration { $$ = $1; }
     ;
 
 local_declaration
     : decltype typename variabledefs SEMI
       {
-          process_declarations($2, $3, SYMBOL_VARIABLE,
-              $1 ? STORAGE_STATIC_LOCAL : STORAGE_STACK);
+          $$ = process_declarations($2, $3, SYMBOL_VARIABLE,
+                                    $1 ? STORAGE_STATIC_LOCAL : STORAGE_STACK);
       }
     | decltype typename error SEMI
       {
           yyerrok;
           if (diagnostics_too_many_syntax_errors()) YYABORT;
+          $$ = ast_new(AST_EMPTY, yylineno, "syntax-error-declaration");
       }
     | decltype typename variabledefs error
       {
@@ -718,6 +731,7 @@ local_declaration
              parsing can continue with the next declaration/statement. */
           yyerrok;
           if (diagnostics_too_many_syntax_errors()) YYABORT;
+          $$ = ast_new(AST_EMPTY, yylineno, "syntax-error-declaration");
       }
     ;
 
@@ -867,8 +881,11 @@ main_function
       }
       function_body
       {
-          puts("\n=== ABSTRACT SYNTAX TREE: main ===");
-          ast_print(stdout, $3, 0);
+          if (diagnostics_syntax_count() == 0) {
+              semantic_check_function_body($3, yylineno);
+              puts("\n=== ABSTRACT SYNTAX TREE: main ===");
+              ast_print(stdout, $3, 0);
+          }
           ast_free($3);
           semantic_end_function();
           symtab_leave_scope();
@@ -881,12 +898,19 @@ main_header
 
 %%
 
-static void declare_identifier(char *name)
+static void declare_enum_value(char *name, AstNode *initializer)
 {
     if (name != NULL) {
-        semantic_declare(name, declaration_symbol_kind,
-                         declaration_base_type ? declaration_base_type : type_error(),
-                         STORAGE_NONE, yylineno, 1);
+        long long value = initializer
+            ? semantic_require_integer_constant(initializer, "enum initializer", yylineno)
+            : next_enum_value;
+        Symbol *local = semantic_declare(
+            name, SYMBOL_ENUM_VALUE,
+            declaration_base_type ? declaration_base_type : type_error(),
+            STORAGE_NONE, yylineno, 1);
+        symtab_set_constant_value(local, CONST_VALUE_INT, value, 0.0, NULL);
+        next_enum_value = value + 1;
+        ast_free(initializer);
         free(name);
     }
 }
@@ -916,6 +940,9 @@ static void remember_function(char *name)
     clear_pending_parameters();
     free(pending_function_name);
     pending_function_name = NULL;
+    free(pending_method_name);
+    pending_method_name = NULL;
+    pending_method_owner = NULL;
 
     if (name != NULL) {
         pending_function_name = strdup(name);
@@ -930,8 +957,12 @@ static void enter_function_scope(void)
 {
     enter_named_scope("function",
                       pending_function_name != NULL ? pending_function_name : "<anonymous>");
-    semantic_begin_function(pending_function_return_type
-                            ? pending_function_return_type : type_error());
+    if (pending_method_owner)
+        semantic_begin_method(pending_method_owner,
+                              pending_function_return_type ? pending_function_return_type : type_error());
+    else
+        semantic_begin_function(pending_function_return_type
+                                ? pending_function_return_type : type_error());
 }
 
 static void finish_function_scope(void)
@@ -940,6 +971,9 @@ static void finish_function_scope(void)
     symtab_leave_scope();
     free(pending_function_name);
     pending_function_name = NULL;
+    free(pending_method_name);
+    pending_method_name = NULL;
+    pending_method_owner = NULL;
 }
 
 static void remember_parameter(char *name, Type *type, PassMode mode)
@@ -1014,9 +1048,14 @@ static void register_pending_function(int definition)
         parameters);
     parameter_free(parameters);
 
-    semantic_declare_function(
-        pending_function_name ? pending_function_name : "<anonymous>",
-        function_type, yylineno, definition);
+    if (pending_method_owner)
+        semantic_declare_method(pending_method_owner,
+            pending_method_name ? pending_method_name : "<anonymous>",
+            function_type, yylineno, definition);
+    else
+        semantic_declare_function(
+            pending_function_name ? pending_function_name : "<anonymous>",
+            function_type, yylineno, definition);
 }
 
 static int implicit_reference(Type *type)
@@ -1058,9 +1097,17 @@ static Type *apply_declarator(Type *base, int is_list,
                               DimList *dimensions, int line)
 {
     Type *type;
+    DimList *dimension;
+    int position = 0;
     if (is_list && dimensions) {
         semantic_error(line,
             "a list marker and array dimensions cannot coexist in one declarator");
+    }
+    for (dimension = dimensions; dimension; dimension = dimension->next, position++) {
+        if (dimension->length == 0)
+            semantic_error(line, "array dimensions must be greater than zero");
+        if (dimension->length < 0 && position != 0)
+            semantic_error(line, "only the first array dimension may be omitted");
     }
     type = is_list ? type_list(base) : base;
     return apply_dimensions_recursive(type, dimensions);
@@ -1099,32 +1146,33 @@ static DeclItem *decl_append(DeclItem *list, DeclItem *item)
     return list;
 }
 
-static void process_declarations(Type *base, DeclItem *items,
-                                 SymbolKind kind, StorageClass storage)
+static AstNode *process_declarations(Type *base, DeclItem *items,
+                                     SymbolKind kind, StorageClass storage)
 {
+    AstNode *declarations = NULL;
     while (items) {
         DeclItem *next = items->next;
         Type *type = apply_declarator(base, items->is_list,
                                       items->dimensions, items->line);
+        Symbol *symbol;
+        AstNode *declaration;
 
-        if (items->initializer) {
-            if (type->kind == TYPE_LIST) {
-                semantic_error(items->line,
-                    "list variable '%s' cannot be initialized", items->name);
-            }
-            if (!type_assignable(type, items->initializer->type)) {
-                semantic_error(items->line,
-                    "initializer of '%s' has incompatible type", items->name);
-            }
-        }
+        semantic_validate_initializer(type, items->initializer,
+                                      items->name, items->line);
 
-        semantic_declare(items->name, kind, type, storage, items->line, 1);
-        ast_free(items->initializer);
+        symbol = semantic_declare(items->name, kind, type, storage, items->line, 1);
+        semantic_store_initial_value(symbol, items->initializer);
+        declaration = ast_new(AST_DECL, items->line, items->name);
+        declaration->type = type;
+        declaration->child[0] = items->initializer;
+        items->initializer = NULL;
+        declarations = ast_append(declarations, declaration);
         dim_free(items->dimensions);
         free(items->name);
         free(items);
         items = next;
     }
+    return declarations;
 }
 
 void yyerror(const char *message)
@@ -1189,7 +1237,9 @@ int main(int argc, char **argv)
     parse_result = yyparse();
 
     if (symtab_current_scope()) symtab_print_scope(symtab_current_scope());
-    semantic_verify_all_prototypes();
+    if (parse_result == 0 && diagnostics_lexical_count() == 0 &&
+        diagnostics_syntax_count() == 0)
+        semantic_verify_all_prototypes();
     symtab_finish();
 
     success = parse_result == 0 &&
@@ -1206,6 +1256,8 @@ int main(int argc, char **argv)
     clear_pending_parameters();
     free(pending_function_name);
     pending_function_name = NULL;
+    free(pending_method_name);
+    pending_method_name = NULL;
     fclose(yyin);
     diagnostics_free_source();
     semantic_finish();

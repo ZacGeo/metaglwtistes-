@@ -41,12 +41,12 @@ static Type *new_type(TypeKind kind, const char *name)
 
 void types_init(void)
 {
-    primitive_error = (Type){ TYPE_ERROR, "<error>", NULL, -1, 0, 1, NULL, 0, NULL };
-    primitive_void = (Type){ TYPE_VOID, "void", NULL, -1, 0, 1, NULL, 0, NULL };
-    primitive_int = (Type){ TYPE_INT, "int", NULL, -1, 4, 4, NULL, 0, NULL };
-    primitive_float = (Type){ TYPE_FLOAT, "float", NULL, -1, 4, 4, NULL, 0, NULL };
-    primitive_char = (Type){ TYPE_CHAR, "char", NULL, -1, 1, 1, NULL, 0, NULL };
-    primitive_string = (Type){ TYPE_STRING, "string", &primitive_char, 256, 256, 1, NULL, 0, NULL };
+    primitive_error = (Type){ TYPE_ERROR, "<error>", NULL, -1, 0, 1, NULL, 0, NULL, NULL };
+    primitive_void = (Type){ TYPE_VOID, "void", NULL, -1, 0, 1, NULL, 0, NULL, NULL };
+    primitive_int = (Type){ TYPE_INT, "int", NULL, -1, 4, 4, NULL, 0, NULL, NULL };
+    primitive_float = (Type){ TYPE_FLOAT, "float", NULL, -1, 4, 4, NULL, 0, NULL, NULL };
+    primitive_char = (Type){ TYPE_CHAR, "char", NULL, -1, 1, 1, NULL, 0, NULL, NULL };
+    primitive_string = (Type){ TYPE_STRING, "string", &primitive_char, 256, 256, 1, NULL, 0, NULL, NULL };
     allocated_types = NULL;
 }
 
@@ -109,6 +109,22 @@ Type *type_function(Type *result, Parameter *parameters)
     return type;
 }
 
+int type_is_derived_from(const Type *derived, const Type *base)
+{
+    const Type *cursor;
+    if (!derived || !base || derived->kind != TYPE_CLASS || base->kind != TYPE_CLASS)
+        return 0;
+    for (cursor = derived; cursor; cursor = cursor->parent)
+        if (cursor == base || (cursor->name && base->name &&
+            strcmp(cursor->name, base->name) == 0)) return 1;
+    return 0;
+}
+
+void type_set_parent(Type *derived, Type *base)
+{
+    if (derived) derived->parent = base;
+}
+
 Parameter *parameter_new(const char *name, Type *type, PassMode mode)
 {
     Parameter *parameter = calloc(1, sizeof(*parameter));
@@ -150,7 +166,8 @@ void parameter_free(Parameter *list)
 
 int type_is_numeric(const Type *type)
 {
-    return type && (type->kind == TYPE_INT || type->kind == TYPE_FLOAT);
+    return type && (type->kind == TYPE_INT || type->kind == TYPE_FLOAT ||
+                    type->kind == TYPE_ENUM);
 }
 
 int type_is_scalar(const Type *type)
@@ -191,9 +208,12 @@ int type_assignable(const Type *destination, const Type *source)
 {
     if (!destination || !source) return 0;
     if (type_equal(destination, source)) return 1;
+    if (type_is_derived_from(source, destination)) return 1;
     if (type_is_numeric(destination) && type_is_numeric(source)) return 1;
-    if (destination->kind == TYPE_LIST && source->kind == TYPE_LIST)
+    if (destination->kind == TYPE_LIST && source->kind == TYPE_LIST) {
+        if (source->base && source->base->kind == TYPE_ERROR) return 1;
         return type_assignable(destination->base, source->base);
+    }
     return 0;
 }
 
@@ -213,12 +233,17 @@ const char *type_kind_name(TypeKind kind)
 void type_print(FILE *stream, const Type *type)
 {
     const Parameter *parameter;
+    const Type *dimension;
     if (!type) { fputs("<no-type>", stream); return; }
     if (type->name) { fputs(type->name, stream); return; }
     switch (type->kind) {
     case TYPE_ARRAY:
-        type_print(stream, type->base);
-        fprintf(stream, "[%lld]", type->array_length);
+        dimension = type;
+        while (dimension->kind == TYPE_ARRAY) dimension = dimension->base;
+        type_print(stream, dimension);
+        for (dimension = type; dimension && dimension->kind == TYPE_ARRAY;
+             dimension = dimension->base)
+            fprintf(stream, "[%lld]", dimension->array_length);
         break;
     case TYPE_LIST:
         type_print(stream, type->base);

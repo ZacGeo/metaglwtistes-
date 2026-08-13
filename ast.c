@@ -20,6 +20,7 @@ AstNode *ast_int(long long value, int line)
 {
     AstNode *node = ast_new(AST_INT, line, NULL);
     node->type = type_int(); node->int_value = value; node->is_constant = 1;
+    node->constant_kind = CONST_VALUE_INT;
     return node;
 }
 
@@ -27,6 +28,7 @@ AstNode *ast_float(double value, int line)
 {
     AstNode *node = ast_new(AST_FLOAT, line, NULL);
     node->type = type_float(); node->float_value = value; node->is_constant = 1;
+    node->constant_kind = CONST_VALUE_FLOAT;
     return node;
 }
 
@@ -34,6 +36,21 @@ AstNode *ast_text(AstKind kind, const char *value, Type *type, int line)
 {
     AstNode *node = ast_new(kind, line, value);
     node->type = type; node->is_constant = kind == AST_CHAR || kind == AST_STRING;
+    if (kind == AST_CHAR) node->constant_kind = CONST_VALUE_CHAR;
+    if (kind == AST_STRING) node->constant_kind = CONST_VALUE_STRING;
+    if (node->is_constant) {
+        node->constant_text = strdup(value ? value : "");
+        if (!node->constant_text) die();
+    }
+    return node;
+}
+
+AstNode *ast_init_list(AstNode *items, int line)
+{
+    AstNode *node = ast_new(AST_INIT_LIST, line, NULL);
+    node->child[0] = items;
+    node->is_constant = 1;
+    node->constant_kind = CONST_VALUE_AGGREGATE;
     return node;
 }
 
@@ -66,6 +83,18 @@ AstNode *ast_cast(AstNode *node, Type *destination, int line)
     if (type_equal(node->type, destination)) return node;
     cast = ast_new(AST_CAST, line, NULL);
     cast->type = destination; cast->child[0] = node;
+    if (node->is_constant && type_is_numeric(node->type) && type_is_numeric(destination)) {
+        cast->is_constant = 1;
+        if (destination->kind == TYPE_FLOAT) {
+            cast->constant_kind = CONST_VALUE_FLOAT;
+            cast->float_value = node->constant_kind == CONST_VALUE_FLOAT
+                ? node->float_value : (double)node->int_value;
+        } else {
+            cast->constant_kind = CONST_VALUE_INT;
+            cast->int_value = node->constant_kind == CONST_VALUE_FLOAT
+                ? (long long)node->float_value : node->int_value;
+        }
+    }
     return cast;
 }
 
@@ -74,7 +103,7 @@ const char *ast_kind_name(AstKind kind)
     static const char *names[] = { "PROGRAM", "FUNCTION", "BLOCK", "DECL", "EMPTY",
         "IDENTIFIER", "INT", "FLOAT", "CHAR", "STRING", "LIST", "UNARY", "BINARY",
         "ASSIGN", "CAST", "INDEX", "MEMBER", "CALL", "IF", "WHILE", "FOR", "RETURN",
-        "INPUT", "OUTPUT", "BREAK", "CONTINUE" };
+        "INPUT", "OUTPUT", "BREAK", "CONTINUE", "INIT_LIST" };
     return names[(int)kind];
 }
 
@@ -102,6 +131,7 @@ void ast_free(AstNode *node)
         int i;
         for (i = 0; i < 4; i++) ast_free(node->child[i]);
         free(node->text);
+        free(node->constant_text);
         free(node);
         node = next;
     }

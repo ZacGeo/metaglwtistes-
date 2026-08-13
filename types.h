@@ -24,6 +24,16 @@ typedef enum PassMode {
     PASS_REFERENCE
 } PassMode;
 
+/* Compile-time values carried by literals, named constants and enum values. */
+typedef enum ConstantValueKind {
+    CONST_VALUE_NONE,
+    CONST_VALUE_INT,
+    CONST_VALUE_FLOAT,
+    CONST_VALUE_CHAR,
+    CONST_VALUE_STRING,
+    CONST_VALUE_AGGREGATE
+} ConstantValueKind;
+
 typedef struct Type Type;
 
 typedef struct Parameter {
@@ -43,6 +53,7 @@ struct Type {
     Parameter *parameters;
     size_t parameter_count;
     void *members;          /* Filled by the symbol-table module. */
+    Type *parent;           /* Base class for single inheritance. */
 };
 
 void types_init(void);
@@ -57,6 +68,8 @@ Type *type_named(TypeKind kind, const char *name);
 Type *type_array(Type *element, long long length);
 Type *type_list(Type *element);
 Type *type_function(Type *result, Parameter *parameters);
+void type_set_parent(Type *derived, Type *base);
+int type_is_derived_from(const Type *derived, const Type *base);
 
 Parameter *parameter_new(const char *name, Type *type, PassMode mode);
 Parameter *parameter_append(Parameter *list, Parameter *item);

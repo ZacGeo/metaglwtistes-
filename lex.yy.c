@@ -750,6 +750,9 @@ char *yytext;
 #include "parser_types.h"
 #include "parser.tab.h"
 
+/* Some Flex skeletons include stdio before the POSIX feature macro. */
+extern int fileno(FILE *stream);
+
 static int trace_tokens = 1;
 static char *string_buffer = NULL;
 static size_t string_length = 0;
@@ -775,13 +778,13 @@ void lexer_set_trace(int enabled)
         if (diagnostics_too_many_syntax_errors())  \
             return 0;                              \
     } while (0)
-#line 778 "lex.yy.c"
+#line 781 "lex.yy.c"
 #define YY_NO_INPUT 1
 
 /* Leading underscores are allowed. Elsewhere an underscore must be followed
    by an alphanumeric character. Thus trailing/consecutive inner '_' fail. */
 /* One A followed by zero or more D, OR no A and one or more D, between C/R. */
-#line 784 "lex.yy.c"
+#line 787 "lex.yy.c"
 
 #define INITIAL 0
 #define COMMENT 1
@@ -998,10 +1001,10 @@ YY_DECL
 		}
 
 	{
-#line 82 "lexer.l"
+#line 85 "lexer.l"
 
 
-#line 1004 "lex.yy.c"
+#line 1007 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -1070,7 +1073,7 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 84 "lexer.l"
+#line 87 "lexer.l"
 {
                                 STOP_AFTER_FIVE_ERRORS();
                                 comment_start_line = yylineno;
@@ -1079,27 +1082,27 @@ YY_RULE_SETUP
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 89 "lexer.l"
+#line 92 "lexer.l"
 { BEGIN(INITIAL); }
 	YY_BREAK
 case 3:
 /* rule 3 can match eol */
 YY_RULE_SETUP
-#line 90 "lexer.l"
+#line 93 "lexer.l"
 { /* yylineno is updated automatically. */ }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 91 "lexer.l"
+#line 94 "lexer.l"
 { /* Ignore block-comment text. */ }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 92 "lexer.l"
+#line 95 "lexer.l"
 { /* Ignore one or more '*'. */ }
 	YY_BREAK
 case YY_STATE_EOF(COMMENT):
-#line 93 "lexer.l"
+#line 96 "lexer.l"
 {
                                 diagnostics_lexical_error(comment_start_line,
                                     "unterminated block comment");
@@ -1110,7 +1113,7 @@ case YY_STATE_EOF(COMMENT):
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 101 "lexer.l"
+#line 104 "lexer.l"
 {
                                 STOP_AFTER_FIVE_ERRORS();
                                 /* Ignore line comment. */
@@ -1120,147 +1123,147 @@ YY_RULE_SETUP
    first rule. Matching is case-insensitive, but yytext preserves its spelling. */
 case 7:
 YY_RULE_SETUP
-#line 108 "lexer.l"
+#line 111 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(TYPEDEF, "TYPEDEF", yytext); }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 109 "lexer.l"
+#line 112 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(CHAR, "CHAR", yytext); }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 110 "lexer.l"
+#line 113 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(INT, "INT", yytext); }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 111 "lexer.l"
+#line 114 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(FLOAT, "FLOAT", yytext); }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 112 "lexer.l"
+#line 115 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(STRING, "STRING", yytext); }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 113 "lexer.l"
+#line 116 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(CONST, "CONST", yytext); }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 114 "lexer.l"
+#line 117 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(CLASS, "CLASS", yytext); }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 115 "lexer.l"
+#line 118 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(PRIVATE, "PRIVATE", yytext); }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 116 "lexer.l"
+#line 119 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(PROTECTED, "PROTECTED", yytext); }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 117 "lexer.l"
+#line 120 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(PUBLIC, "PUBLIC", yytext); }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 118 "lexer.l"
+#line 121 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(VOID, "VOID", yytext); }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 119 "lexer.l"
+#line 122 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(STATIC, "STATIC", yytext); }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 120 "lexer.l"
+#line 123 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(UNION, "UNION", yytext); }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 121 "lexer.l"
+#line 124 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(ENUM, "ENUM", yytext); }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 122 "lexer.l"
+#line 125 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(LIST, "LIST", yytext); }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 123 "lexer.l"
+#line 126 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(CONTINUE, "CONTINUE", yytext); }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 124 "lexer.l"
+#line 127 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(BREAK, "BREAK", yytext); }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 125 "lexer.l"
+#line 128 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(IF, "IF", yytext); }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 126 "lexer.l"
+#line 129 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(ELSE, "ELSE", yytext); }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 127 "lexer.l"
+#line 130 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(WHILE, "WHILE", yytext); }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 128 "lexer.l"
+#line 131 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(FOR, "FOR", yytext); }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 129 "lexer.l"
+#line 132 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(RETURN, "RETURN", yytext); }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 130 "lexer.l"
+#line 133 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(LENGTH, "LENGTH", yytext); }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 131 "lexer.l"
+#line 134 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(CIN, "CIN", yytext); }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 132 "lexer.l"
+#line 135 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(COUT, "COUT", yytext); }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 133 "lexer.l"
+#line 136 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(MAIN, "MAIN", yytext); }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 134 "lexer.l"
+#line 137 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(THIS, "THIS", yytext); }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 135 "lexer.l"
+#line 138 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(SIZEOP, "SIZEOP", yytext); }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 137 "lexer.l"
+#line 140 "lexer.l"
 {
                                 STOP_AFTER_FIVE_ERRORS();
                                 yylval.sval = xstrdup(yytext);
@@ -1270,7 +1273,7 @@ YY_RULE_SETUP
 /* Floating rules must precede integer rules. */
 case 36:
 YY_RULE_SETUP
-#line 144 "lexer.l"
+#line 147 "lexer.l"
 {
                                 STOP_AFTER_FIVE_ERRORS();
                                 if (yytext[0] == '0' && (yytext[1] == 'x' || yytext[1] == 'X'))
@@ -1290,7 +1293,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 161 "lexer.l"
+#line 164 "lexer.l"
 {
                                 int base = 10;
                                 const char *digits = yytext;
@@ -1324,7 +1327,7 @@ YY_RULE_SETUP
    scanner itself is caseless, validate special character escapes explicitly. */
 case 38:
 YY_RULE_SETUP
-#line 192 "lexer.l"
+#line 195 "lexer.l"
 {
                                 STOP_AFTER_FIVE_ERRORS();
                                 if (strchr("nftrbv", yytext[2]) != NULL) {
@@ -1337,7 +1340,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 202 "lexer.l"
+#line 205 "lexer.l"
 {
                                 STOP_AFTER_FIVE_ERRORS();
                                 yylval.sval = xstrdup(yytext);
@@ -1346,7 +1349,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 208 "lexer.l"
+#line 211 "lexer.l"
 {
                                 diagnostics_lexical_error(yylineno,
                                     "malformed character constant; constant discarded");
@@ -1355,7 +1358,7 @@ YY_RULE_SETUP
 case 41:
 /* rule 41 can match eol */
 YY_RULE_SETUP
-#line 213 "lexer.l"
+#line 216 "lexer.l"
 {
                                 diagnostics_lexical_error(yylineno - 1,
                                     "unterminated character constant; line discarded");
@@ -1363,7 +1366,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 218 "lexer.l"
+#line 221 "lexer.l"
 {
                                 diagnostics_lexical_error(yylineno,
                                     "unterminated character constant at end of file");
@@ -1371,7 +1374,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 223 "lexer.l"
+#line 226 "lexer.l"
 {
                                 STOP_AFTER_FIVE_ERRORS();
                                 string_reset();
@@ -1381,7 +1384,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 230 "lexer.l"
+#line 233 "lexer.l"
 {
                                 yylval.sval = xstrdup(string_buffer != NULL ? string_buffer : "");
                                 if (trace_tokens)
@@ -1394,7 +1397,7 @@ YY_RULE_SETUP
 case 45:
 /* rule 45 can match eol */
 YY_RULE_SETUP
-#line 239 "lexer.l"
+#line 242 "lexer.l"
 {
                                 /* Line continuation: neither character belongs
                                    to the returned string. */
@@ -1402,12 +1405,12 @@ YY_RULE_SETUP
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 243 "lexer.l"
+#line 246 "lexer.l"
 { string_append(yytext, (size_t)yyleng); }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 244 "lexer.l"
+#line 247 "lexer.l"
 {
                                 diagnostics_lexical_error(string_start_line,
                                     "unterminated string constant after backslash");
@@ -1417,13 +1420,13 @@ YY_RULE_SETUP
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 250 "lexer.l"
+#line 253 "lexer.l"
 { string_append(yytext, (size_t)yyleng); }
 	YY_BREAK
 case 49:
 /* rule 49 can match eol */
 YY_RULE_SETUP
-#line 251 "lexer.l"
+#line 254 "lexer.l"
 {
                                 diagnostics_lexical_error(string_start_line,
                                     "unterminated string constant before end of line");
@@ -1431,7 +1434,7 @@ YY_RULE_SETUP
                               }
 	YY_BREAK
 case YY_STATE_EOF(STRING_STATE):
-#line 256 "lexer.l"
+#line 259 "lexer.l"
 {
                                 diagnostics_lexical_error(string_start_line,
                                     "unterminated string constant at end of file");
@@ -1442,7 +1445,7 @@ case YY_STATE_EOF(STRING_STATE):
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 264 "lexer.l"
+#line 267 "lexer.l"
 {
                                 STOP_AFTER_FIVE_ERRORS();
                                 yylval.sval = xstrdup(yytext);
@@ -1452,173 +1455,173 @@ YY_RULE_SETUP
 /* Long operators before their one-character prefixes. */
 case 51:
 YY_RULE_SETUP
-#line 271 "lexer.l"
+#line 274 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(OROP, "OROP", yytext); }
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 272 "lexer.l"
+#line 275 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(ANDOP, "ANDOP", yytext); }
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 273 "lexer.l"
+#line 276 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(EQUOP, "EQUOP", yytext); }
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 274 "lexer.l"
+#line 277 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(EQUOP, "EQUOP", yytext); }
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 275 "lexer.l"
+#line 278 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(RELOP, "RELOP", yytext); }
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 276 "lexer.l"
+#line 279 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(RELOP, "RELOP", yytext); }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 277 "lexer.l"
+#line 280 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(INCDEC, "INCDEC", yytext); }
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 278 "lexer.l"
+#line 281 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(INCDEC, "INCDEC", yytext); }
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 279 "lexer.l"
+#line 282 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(METH, "METH", yytext); }
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 280 "lexer.l"
+#line 283 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(INP, "INP", yytext); }
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 281 "lexer.l"
+#line 284 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(OUT, "OUT", yytext); }
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 282 "lexer.l"
+#line 285 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(RELOP, "RELOP", yytext); }
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 283 "lexer.l"
+#line 286 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(RELOP, "RELOP", yytext); }
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 284 "lexer.l"
+#line 287 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(ADDOP, "ADDOP", yytext); }
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 285 "lexer.l"
+#line 288 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(ADDOP, "ADDOP", yytext); }
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 286 "lexer.l"
+#line 289 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(MULOP, "MULOP", yytext); }
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 287 "lexer.l"
+#line 290 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(MULOP, "MULOP", yytext); }
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 288 "lexer.l"
+#line 291 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(MULOP, "MULOP", yytext); }
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 289 "lexer.l"
+#line 292 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_text_token(NOTOP, "NOTOP", yytext); }
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 290 "lexer.l"
+#line 293 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(LPAREN, "LPAREN", yytext); }
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 291 "lexer.l"
+#line 294 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(RPAREN, "RPAREN", yytext); }
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 292 "lexer.l"
+#line 295 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(SEMI, "SEMI", yytext); }
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 293 "lexer.l"
+#line 296 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(DOT, "DOT", yytext); }
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 294 "lexer.l"
+#line 297 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(COMMA, "COMMA", yytext); }
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 295 "lexer.l"
+#line 298 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(ASSIGN, "ASSIGN", yytext); }
 	YY_BREAK
 case 76:
 YY_RULE_SETUP
-#line 296 "lexer.l"
+#line 299 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(COLON, "COLON", yytext); }
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 297 "lexer.l"
+#line 300 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(LBRACK, "LBRACK", yytext); }
 	YY_BREAK
 case 78:
 YY_RULE_SETUP
-#line 298 "lexer.l"
+#line 301 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(RBRACK, "RBRACK", yytext); }
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 299 "lexer.l"
+#line 302 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(REFER, "REFER", yytext); }
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 300 "lexer.l"
+#line 303 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(LBRACE, "LBRACE", yytext); }
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 301 "lexer.l"
+#line 304 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); return emit_token(RBRACE, "RBRACE", yytext); }
 	YY_BREAK
 case 82:
 YY_RULE_SETUP
-#line 303 "lexer.l"
+#line 306 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); }
 	YY_BREAK
 case 83:
 /* rule 83 can match eol */
 YY_RULE_SETUP
-#line 304 "lexer.l"
+#line 307 "lexer.l"
 { STOP_AFTER_FIVE_ERRORS(); }
 	YY_BREAK
 case 84:
 YY_RULE_SETUP
-#line 306 "lexer.l"
+#line 309 "lexer.l"
 {
                                 char message[128];
                                 snprintf(message, sizeof(message),
@@ -1628,7 +1631,7 @@ YY_RULE_SETUP
                               }
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 314 "lexer.l"
+#line 317 "lexer.l"
 {
                                 if (trace_tokens) printf("[EOF]\n");
                                 return 0;
@@ -1636,10 +1639,10 @@ case YY_STATE_EOF(INITIAL):
 	YY_BREAK
 case 85:
 YY_RULE_SETUP
-#line 319 "lexer.l"
+#line 322 "lexer.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 1642 "lex.yy.c"
+#line 1645 "lex.yy.c"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -2613,7 +2616,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 319 "lexer.l"
+#line 322 "lexer.l"
 
 
 static void *xrealloc(void *ptr, size_t size)

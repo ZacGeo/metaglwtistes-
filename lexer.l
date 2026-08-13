@@ -10,6 +10,9 @@
 #include "parser_types.h"
 #include "parser.tab.h"
 
+/* Some Flex skeletons include stdio before the POSIX feature macro. */
+extern int fileno(FILE *stream);
+
 static int trace_tokens = 1;
 static char *string_buffer = NULL;
 static size_t string_length = 0;
