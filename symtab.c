@@ -93,6 +93,11 @@ void symtab_leave_scope(void)
 }
 
 Scope *symtab_current_scope(void) { return current_scope; }
+Scope *symtab_root_scope(void) { return root_scope; }
+long symtab_global_size(void) { return global_static_offset; }
+long symtab_scope_total_size(const Scope *scope) { return scope ? scope->total_size : 0; }
+const char *symtab_scope_label(const Scope *scope) { return scope ? scope->label : "<none>"; }
+Symbol *symtab_scope_first_symbol(const Scope *scope) { return scope ? scope->first_symbol : NULL; }
 const char *symtab_current_label(void) { return current_scope ? current_scope->label : "<none>"; }
 int symtab_current_depth(void) { return current_scope ? current_scope->depth : -1; }
 Type *symtab_current_owner_type(void) { return current_scope ? current_scope->owner_type : NULL; }
@@ -135,6 +140,7 @@ Symbol *symtab_declare_full(const char *name, SymbolKind kind, Type *type,
     symbol->name = strdup(name);
     if (!symbol->name) die();
     symbol->kind = kind; symbol->type = type; symbol->storage = storage;
+    symbol->scope = current_scope;
     symbol->line = line; symbol->defined = defined;
     symbol->access = current_scope->current_access;
     symbol->owner_type = current_scope->owner_type;

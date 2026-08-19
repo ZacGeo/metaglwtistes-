@@ -77,6 +77,8 @@
 #include "semantic.h"
 #include "types.h"
 #include "parser_types.h"
+#include "ir.h"
+#include "codegen.h"
 
 extern int yylex(void);
 extern int yylineno;
@@ -89,6 +91,8 @@ void yyerror(const char *message);
 static char *pending_function_name = NULL;
 static char *pending_method_name = NULL;
 static Type *pending_method_owner = NULL;
+static Symbol *pending_function_symbol = NULL;
+static Symbol *main_symbol = NULL;
 
 typedef struct PendingParameter {
     char *name;
@@ -125,7 +129,7 @@ static AstNode *process_declarations(Type *base, DeclItem *items, SymbolKind kin
                                      StorageClass storage);
 
 /* Line 371 of yacc.c  */
-#line 129 "parser.tab.c"
+#line 133 "parser.tab.c"
 
 # ifndef YY_NULL
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -227,7 +231,7 @@ extern int yydebug;
 typedef union YYSTYPE
 {
 /* Line 387 of yacc.c  */
-#line 65 "parser.y"
+#line 69 "parser.y"
 
     long long ival;
     double fval;
@@ -239,7 +243,7 @@ typedef union YYSTYPE
 
 
 /* Line 387 of yacc.c  */
-#line 243 "parser.tab.c"
+#line 247 "parser.tab.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -267,7 +271,7 @@ int yyparse ();
 /* Copy the second part of user declarations.  */
 
 /* Line 390 of yacc.c  */
-#line 271 "parser.tab.c"
+#line 275 "parser.tab.c"
 
 #ifdef short
 # undef short
@@ -637,26 +641,26 @@ static const yytype_int16 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   118,   118,   122,   123,   127,   128,   129,   130,   131,
-     132,   133,   134,   142,   152,   153,   161,   162,   163,   164,
-     165,   169,   170,   174,   175,   179,   180,   185,   184,   190,
-     191,   195,   210,   211,   215,   216,   222,   226,   228,   232,
-     234,   238,   240,   244,   246,   250,   252,   256,   258,   262,
-     264,   266,   267,   269,   273,   275,   276,   277,   279,   280,
-     281,   283,   287,   289,   294,   299,   304,   308,   309,   313,
-     314,   318,   319,   323,   328,   329,   330,   338,   344,   343,
-     361,   362,   370,   374,   381,   382,   387,   386,   401,   402,
-     410,   421,   425,   426,   430,   431,   432,   433,   437,   438,
-     442,   443,   447,   452,   453,   457,   466,   466,   471,   472,
-     480,   481,   485,   489,   493,   499,   508,   512,   521,   522,
-     526,   528,   538,   543,   542,   558,   563,   564,   568,   573,
-     574,   578,   589,   588,   604,   603,   621,   627,   636,   663,
-     670,   671,   675,   679,   689,   693,   695,   704,   705,   706,
-     707,   711,   712,   716,   721,   727,   739,   740,   744,   745,
-     749,   750,   751,   752,   753,   754,   755,   756,   757,   758,
-     759,   768,   773,   779,   790,   789,   802,   801,   815,   816,
-     820,   824,   826,   831,   832,   836,   844,   845,   849,   853,
-     860,   866,   877,   876,   896
+       0,   122,   122,   126,   127,   131,   132,   133,   134,   135,
+     136,   137,   138,   146,   156,   157,   165,   166,   167,   168,
+     169,   173,   174,   178,   179,   183,   184,   189,   188,   194,
+     195,   199,   220,   221,   225,   226,   232,   236,   238,   242,
+     244,   248,   250,   254,   256,   260,   262,   266,   268,   272,
+     274,   276,   277,   279,   283,   286,   287,   288,   290,   291,
+     292,   294,   298,   300,   305,   310,   315,   319,   320,   324,
+     325,   329,   330,   334,   339,   340,   341,   349,   355,   354,
+     372,   373,   381,   385,   392,   393,   398,   397,   412,   413,
+     421,   432,   436,   437,   441,   442,   443,   444,   448,   449,
+     453,   454,   458,   463,   464,   468,   477,   477,   482,   483,
+     491,   492,   496,   500,   504,   510,   519,   523,   532,   533,
+     537,   539,   549,   554,   553,   569,   574,   575,   579,   584,
+     585,   589,   602,   601,   619,   618,   638,   644,   653,   680,
+     687,   688,   692,   696,   706,   710,   712,   721,   722,   723,
+     724,   728,   729,   733,   738,   744,   756,   757,   761,   762,
+     766,   767,   768,   769,   770,   771,   772,   773,   774,   775,
+     776,   785,   790,   796,   807,   806,   819,   818,   832,   833,
+     837,   841,   843,   848,   849,   853,   861,   862,   866,   870,
+     877,   883,   894,   893,   914
 };
 #endif
 
@@ -1603,94 +1607,94 @@ yydestruct (yymsg, yytype, yyvaluep)
     {
       case 31: /* OROP */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1610 "parser.tab.c"
+#line 1614 "parser.tab.c"
         break;
       case 32: /* ANDOP */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1617 "parser.tab.c"
+#line 1621 "parser.tab.c"
         break;
       case 33: /* EQUOP */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1624 "parser.tab.c"
+#line 1628 "parser.tab.c"
         break;
       case 34: /* RELOP */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1631 "parser.tab.c"
+#line 1635 "parser.tab.c"
         break;
       case 35: /* ADDOP */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1638 "parser.tab.c"
+#line 1642 "parser.tab.c"
         break;
       case 36: /* MULOP */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1645 "parser.tab.c"
+#line 1649 "parser.tab.c"
         break;
       case 37: /* NOTOP */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1652 "parser.tab.c"
+#line 1656 "parser.tab.c"
         break;
       case 38: /* INCDEC */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1659 "parser.tab.c"
+#line 1663 "parser.tab.c"
         break;
       case 56: /* CCONST */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1666 "parser.tab.c"
+#line 1670 "parser.tab.c"
         break;
       case 57: /* SCONST */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1673 "parser.tab.c"
+#line 1677 "parser.tab.c"
         break;
       case 58: /* ID */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1680 "parser.tab.c"
+#line 1684 "parser.tab.c"
         break;
       case 59: /* LISTFUNC */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1687 "parser.tab.c"
+#line 1691 "parser.tab.c"
         break;
       case 131: /* func_class */
 /* Line 1398 of yacc.c  */
-#line 109 "parser.y"
+#line 113 "parser.y"
         { free(((*yyvaluep).sval)); };
 /* Line 1398 of yacc.c  */
-#line 1694 "parser.tab.c"
+#line 1698 "parser.tab.c"
         break;
 
       default:
@@ -1980,7 +1984,7 @@ yyreduce:
     {
         case 12:
 /* Line 1792 of yacc.c  */
-#line 135 "parser.y"
+#line 139 "parser.y"
     {
           yyerrok;
           if (diagnostics_too_many_syntax_errors()) YYABORT;
@@ -1989,7 +1993,7 @@ yyreduce:
 
   case 13:
 /* Line 1792 of yacc.c  */
-#line 143 "parser.y"
+#line 147 "parser.y"
     {
           Type *alias = apply_declarator((yyvsp[(2) - (6)].type), (int)(yyvsp[(3) - (6)].ival), (yyvsp[(5) - (6)].dims), yylineno);
           semantic_declare((yyvsp[(4) - (6)].sval), SYMBOL_TYPE, alias, STORAGE_NONE, yylineno, 1);
@@ -2000,7 +2004,7 @@ yyreduce:
 
   case 15:
 /* Line 1792 of yacc.c  */
-#line 154 "parser.y"
+#line 158 "parser.y"
     {
           (yyval.type) = semantic_resolve_type((yyvsp[(1) - (1)].sval), yylineno);
           discard_text((yyvsp[(1) - (1)].sval));
@@ -2009,79 +2013,79 @@ yyreduce:
 
   case 16:
 /* Line 1792 of yacc.c  */
-#line 161 "parser.y"
+#line 165 "parser.y"
     { (yyval.type) = type_char(); }
     break;
 
   case 17:
 /* Line 1792 of yacc.c  */
-#line 162 "parser.y"
+#line 166 "parser.y"
     { (yyval.type) = type_int(); }
     break;
 
   case 18:
 /* Line 1792 of yacc.c  */
-#line 163 "parser.y"
+#line 167 "parser.y"
     { (yyval.type) = type_float(); }
     break;
 
   case 19:
 /* Line 1792 of yacc.c  */
-#line 164 "parser.y"
+#line 168 "parser.y"
     { (yyval.type) = type_string(); }
     break;
 
   case 20:
 /* Line 1792 of yacc.c  */
-#line 165 "parser.y"
+#line 169 "parser.y"
     { (yyval.type) = type_void(); }
     break;
 
   case 21:
 /* Line 1792 of yacc.c  */
-#line 169 "parser.y"
+#line 173 "parser.y"
     { (yyval.ival) = 1; }
     break;
 
   case 22:
 /* Line 1792 of yacc.c  */
-#line 170 "parser.y"
+#line 174 "parser.y"
     { (yyval.ival) = 0; }
     break;
 
   case 23:
 /* Line 1792 of yacc.c  */
-#line 174 "parser.y"
+#line 178 "parser.y"
     { (yyval.dims) = dim_append((yyvsp[(1) - (2)].dims), (yyvsp[(2) - (2)].dims)); }
     break;
 
   case 24:
 /* Line 1792 of yacc.c  */
-#line 175 "parser.y"
+#line 179 "parser.y"
     { (yyval.dims) = NULL; }
     break;
 
   case 25:
 /* Line 1792 of yacc.c  */
-#line 179 "parser.y"
+#line 183 "parser.y"
     { (yyval.dims) = dim_new((yyvsp[(2) - (3)].ival)); }
     break;
 
   case 26:
 /* Line 1792 of yacc.c  */
-#line 180 "parser.y"
+#line 184 "parser.y"
     { (yyval.dims) = dim_new(-1); }
     break;
 
   case 27:
 /* Line 1792 of yacc.c  */
-#line 185 "parser.y"
+#line 189 "parser.y"
     { declaration_base_type = (yyvsp[(2) - (2)].type); }
     break;
 
   case 31:
 /* Line 1792 of yacc.c  */
-#line 196 "parser.y"
+#line 200 "parser.y"
     {
           Type *type = apply_declarator(declaration_base_type, 0, (yyvsp[(2) - (4)].dims), yylineno);
           Symbol *symbol;
@@ -2089,195 +2093,202 @@ yyreduce:
           symbol = semantic_declare((yyvsp[(1) - (4)].sval), SYMBOL_CONSTANT, type,
                                     STORAGE_NONE, yylineno, 1);
           semantic_store_constant(symbol, (yyvsp[(4) - (4)].node), yylineno);
+          {
+              AstNode *declaration = ast_new(AST_DECL, yylineno, (yyvsp[(1) - (4)].sval));
+              declaration->type = type;
+              declaration->symbol = symbol;
+              declaration->child[0] = (yyvsp[(4) - (4)].node);
+              ir_add_global(declaration);
+          }
           dim_free((yyvsp[(2) - (4)].dims));
-          ast_free((yyvsp[(4) - (4)].node));
           discard_text((yyvsp[(1) - (4)].sval));
       }
     break;
 
   case 33:
 /* Line 1792 of yacc.c  */
-#line 211 "parser.y"
+#line 221 "parser.y"
     { (yyval.node) = ast_init_list((yyvsp[(2) - (3)].node), yylineno); }
     break;
 
   case 34:
 /* Line 1792 of yacc.c  */
-#line 215 "parser.y"
+#line 225 "parser.y"
     { (yyval.node) = ast_append((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node)); }
     break;
 
   case 35:
 /* Line 1792 of yacc.c  */
-#line 216 "parser.y"
+#line 226 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 36:
 /* Line 1792 of yacc.c  */
-#line 222 "parser.y"
+#line 232 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 37:
 /* Line 1792 of yacc.c  */
-#line 227 "parser.y"
+#line 237 "parser.y"
     { (yyval.node) = semantic_binary((yyvsp[(2) - (3)].sval), (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node), yylineno); free((yyvsp[(2) - (3)].sval)); }
     break;
 
   case 38:
 /* Line 1792 of yacc.c  */
-#line 228 "parser.y"
+#line 238 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 39:
 /* Line 1792 of yacc.c  */
-#line 233 "parser.y"
+#line 243 "parser.y"
     { (yyval.node) = semantic_binary((yyvsp[(2) - (3)].sval), (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node), yylineno); free((yyvsp[(2) - (3)].sval)); }
     break;
 
   case 40:
 /* Line 1792 of yacc.c  */
-#line 234 "parser.y"
+#line 244 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 41:
 /* Line 1792 of yacc.c  */
-#line 239 "parser.y"
+#line 249 "parser.y"
     { (yyval.node) = semantic_binary((yyvsp[(2) - (3)].sval), (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node), yylineno); free((yyvsp[(2) - (3)].sval)); }
     break;
 
   case 42:
 /* Line 1792 of yacc.c  */
-#line 240 "parser.y"
+#line 250 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 43:
 /* Line 1792 of yacc.c  */
-#line 245 "parser.y"
+#line 255 "parser.y"
     { (yyval.node) = semantic_binary((yyvsp[(2) - (3)].sval), (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node), yylineno); free((yyvsp[(2) - (3)].sval)); }
     break;
 
   case 44:
 /* Line 1792 of yacc.c  */
-#line 246 "parser.y"
+#line 256 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 45:
 /* Line 1792 of yacc.c  */
-#line 251 "parser.y"
+#line 261 "parser.y"
     { (yyval.node) = semantic_binary((yyvsp[(2) - (3)].sval), (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node), yylineno); free((yyvsp[(2) - (3)].sval)); }
     break;
 
   case 46:
 /* Line 1792 of yacc.c  */
-#line 252 "parser.y"
+#line 262 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 47:
 /* Line 1792 of yacc.c  */
-#line 257 "parser.y"
+#line 267 "parser.y"
     { (yyval.node) = semantic_binary((yyvsp[(2) - (3)].sval), (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node), yylineno); free((yyvsp[(2) - (3)].sval)); }
     break;
 
   case 48:
 /* Line 1792 of yacc.c  */
-#line 258 "parser.y"
+#line 268 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 49:
 /* Line 1792 of yacc.c  */
-#line 263 "parser.y"
+#line 273 "parser.y"
     { (yyval.node) = semantic_unary((yyvsp[(1) - (2)].sval), (yyvsp[(2) - (2)].node), yylineno); free((yyvsp[(1) - (2)].sval)); }
     break;
 
   case 50:
 /* Line 1792 of yacc.c  */
-#line 265 "parser.y"
+#line 275 "parser.y"
     { (yyval.node) = semantic_unary((yyvsp[(1) - (2)].sval), (yyvsp[(2) - (2)].node), yylineno); free((yyvsp[(1) - (2)].sval)); }
     break;
 
   case 51:
 /* Line 1792 of yacc.c  */
-#line 266 "parser.y"
+#line 276 "parser.y"
     { (yyval.node) = semantic_unary("sizeof", (yyvsp[(2) - (2)].node), yylineno); }
     break;
 
   case 52:
 /* Line 1792 of yacc.c  */
-#line 268 "parser.y"
+#line 278 "parser.y"
     { (yyval.node) = semantic_unary((yyvsp[(1) - (2)].sval), (yyvsp[(2) - (2)].node), yylineno); free((yyvsp[(1) - (2)].sval)); }
     break;
 
   case 53:
 /* Line 1792 of yacc.c  */
-#line 269 "parser.y"
+#line 279 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 54:
 /* Line 1792 of yacc.c  */
-#line 274 "parser.y"
-    { (yyval.node) = semantic_unary((yyvsp[(2) - (2)].sval), (yyvsp[(1) - (2)].node), yylineno); free((yyvsp[(2) - (2)].sval)); }
+#line 284 "parser.y"
+    { (yyval.node) = semantic_unary(strcmp((yyvsp[(2) - (2)].sval), "++") == 0 ? "post++" : "post--",
+                            (yyvsp[(1) - (2)].node), yylineno); free((yyvsp[(2) - (2)].sval)); }
     break;
 
   case 55:
 /* Line 1792 of yacc.c  */
-#line 275 "parser.y"
+#line 286 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 56:
 /* Line 1792 of yacc.c  */
-#line 276 "parser.y"
+#line 287 "parser.y"
     { (yyval.node) = semantic_call((yyvsp[(1) - (4)].node), (yyvsp[(3) - (4)].node), yylineno); }
     break;
 
   case 57:
 /* Line 1792 of yacc.c  */
-#line 278 "parser.y"
+#line 289 "parser.y"
     { (yyval.node) = semantic_length((yyvsp[(3) - (4)].node), yylineno); }
     break;
 
   case 58:
 /* Line 1792 of yacc.c  */
-#line 279 "parser.y"
+#line 290 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 59:
 /* Line 1792 of yacc.c  */
-#line 280 "parser.y"
+#line 291 "parser.y"
     { (yyval.node) = (yyvsp[(2) - (3)].node); }
     break;
 
   case 60:
 /* Line 1792 of yacc.c  */
-#line 282 "parser.y"
+#line 293 "parser.y"
     { (yyval.node) = ast_new(AST_EMPTY, yylineno, "type-expression"); (yyval.node)->type = (yyvsp[(2) - (3)].type); }
     break;
 
   case 61:
 /* Line 1792 of yacc.c  */
-#line 283 "parser.y"
+#line 294 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 62:
 /* Line 1792 of yacc.c  */
-#line 288 "parser.y"
+#line 299 "parser.y"
     { (yyval.node) = semantic_index((yyvsp[(1) - (4)].node), (yyvsp[(3) - (4)].node), yylineno); }
     break;
 
   case 63:
 /* Line 1792 of yacc.c  */
-#line 290 "parser.y"
+#line 301 "parser.y"
     {
           (yyval.node) = semantic_member((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].sval), yylineno);
           discard_text((yyvsp[(3) - (3)].sval));
@@ -2286,7 +2297,7 @@ yyreduce:
 
   case 64:
 /* Line 1792 of yacc.c  */
-#line 295 "parser.y"
+#line 306 "parser.y"
     {
           (yyval.node) = semantic_list_function((yyvsp[(1) - (4)].sval), (yyvsp[(3) - (4)].node), yylineno);
           discard_text((yyvsp[(1) - (4)].sval));
@@ -2295,7 +2306,7 @@ yyreduce:
 
   case 65:
 /* Line 1792 of yacc.c  */
-#line 300 "parser.y"
+#line 311 "parser.y"
     {
           (yyval.node) = semantic_identifier((yyvsp[(2) - (2)].sval), yylineno);
           discard_text((yyvsp[(2) - (2)].sval));
@@ -2304,49 +2315,49 @@ yyreduce:
 
   case 66:
 /* Line 1792 of yacc.c  */
-#line 304 "parser.y"
+#line 315 "parser.y"
     { (yyval.node) = semantic_this(yylineno); }
     break;
 
   case 67:
 /* Line 1792 of yacc.c  */
-#line 308 "parser.y"
+#line 319 "parser.y"
     { (yyval.node) = ast_append((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node)); }
     break;
 
   case 68:
 /* Line 1792 of yacc.c  */
-#line 309 "parser.y"
+#line 320 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 69:
 /* Line 1792 of yacc.c  */
-#line 313 "parser.y"
+#line 324 "parser.y"
     { (yyval.node) = semantic_assignment((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node), yylineno); }
     break;
 
   case 70:
 /* Line 1792 of yacc.c  */
-#line 314 "parser.y"
+#line 325 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 71:
 /* Line 1792 of yacc.c  */
-#line 318 "parser.y"
+#line 329 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 72:
 /* Line 1792 of yacc.c  */
-#line 319 "parser.y"
+#line 330 "parser.y"
     { (yyval.node) = NULL; }
     break;
 
   case 73:
 /* Line 1792 of yacc.c  */
-#line 324 "parser.y"
+#line 335 "parser.y"
     {
           (yyval.node) = ast_text(AST_CHAR, (yyvsp[(1) - (1)].sval), type_char(), yylineno);
           discard_text((yyvsp[(1) - (1)].sval));
@@ -2355,19 +2366,19 @@ yyreduce:
 
   case 74:
 /* Line 1792 of yacc.c  */
-#line 328 "parser.y"
+#line 339 "parser.y"
     { (yyval.node) = ast_int((yyvsp[(1) - (1)].ival), yylineno); }
     break;
 
   case 75:
 /* Line 1792 of yacc.c  */
-#line 329 "parser.y"
+#line 340 "parser.y"
     { (yyval.node) = ast_float((yyvsp[(1) - (1)].fval), yylineno); }
     break;
 
   case 76:
 /* Line 1792 of yacc.c  */
-#line 331 "parser.y"
+#line 342 "parser.y"
     {
           (yyval.node) = semantic_string_literal((yyvsp[(1) - (1)].sval), yylineno);
           discard_text((yyvsp[(1) - (1)].sval));
@@ -2376,13 +2387,13 @@ yyreduce:
 
   case 77:
 /* Line 1792 of yacc.c  */
-#line 339 "parser.y"
+#line 350 "parser.y"
     { (yyval.node) = semantic_list_literal((yyvsp[(2) - (3)].node), yylineno); }
     break;
 
   case 78:
 /* Line 1792 of yacc.c  */
-#line 344 "parser.y"
+#line 355 "parser.y"
     {
           Type *type = type_named(TYPE_ENUM, (yyvsp[(2) - (2)].sval));
           semantic_declare((yyvsp[(2) - (2)].sval), SYMBOL_TYPE, type, STORAGE_NONE, yylineno, 1);
@@ -2397,7 +2408,7 @@ yyreduce:
 
   case 79:
 /* Line 1792 of yacc.c  */
-#line 355 "parser.y"
+#line 366 "parser.y"
     {
           symtab_leave_scope();
       }
@@ -2405,7 +2416,7 @@ yyreduce:
 
   case 81:
 /* Line 1792 of yacc.c  */
-#line 363 "parser.y"
+#line 374 "parser.y"
     {
           yyerrok;
           if (diagnostics_too_many_syntax_errors()) YYABORT;
@@ -2414,7 +2425,7 @@ yyreduce:
 
   case 82:
 /* Line 1792 of yacc.c  */
-#line 371 "parser.y"
+#line 382 "parser.y"
     {
           declare_enum_value((yyvsp[(3) - (4)].sval), (yyvsp[(4) - (4)].node));
       }
@@ -2422,7 +2433,7 @@ yyreduce:
 
   case 83:
 /* Line 1792 of yacc.c  */
-#line 375 "parser.y"
+#line 386 "parser.y"
     {
           declare_enum_value((yyvsp[(1) - (2)].sval), (yyvsp[(2) - (2)].node));
       }
@@ -2430,19 +2441,19 @@ yyreduce:
 
   case 84:
 /* Line 1792 of yacc.c  */
-#line 381 "parser.y"
+#line 392 "parser.y"
     { (yyval.node) = (yyvsp[(2) - (2)].node); }
     break;
 
   case 85:
 /* Line 1792 of yacc.c  */
-#line 382 "parser.y"
+#line 393 "parser.y"
     { (yyval.node) = NULL; }
     break;
 
   case 86:
 /* Line 1792 of yacc.c  */
-#line 387 "parser.y"
+#line 398 "parser.y"
     {
           Type *type = type_named(TYPE_CLASS, (yyvsp[(2) - (2)].sval));
           semantic_declare((yyvsp[(2) - (2)].sval), SYMBOL_TYPE, type, STORAGE_NONE, yylineno, 1);
@@ -2454,7 +2465,7 @@ yyreduce:
 
   case 87:
 /* Line 1792 of yacc.c  */
-#line 395 "parser.y"
+#line 406 "parser.y"
     {
           symtab_leave_scope();
       }
@@ -2462,7 +2473,7 @@ yyreduce:
 
   case 89:
 /* Line 1792 of yacc.c  */
-#line 403 "parser.y"
+#line 414 "parser.y"
     {
           yyerrok;
           if (diagnostics_too_many_syntax_errors()) YYABORT;
@@ -2471,7 +2482,7 @@ yyreduce:
 
   case 90:
 /* Line 1792 of yacc.c  */
-#line 411 "parser.y"
+#line 422 "parser.y"
     {
           Type *derived = symtab_current_owner_type();
           Type *base = semantic_resolve_type((yyvsp[(2) - (2)].sval), yylineno);
@@ -2486,43 +2497,43 @@ yyreduce:
 
   case 94:
 /* Line 1792 of yacc.c  */
-#line 430 "parser.y"
+#line 441 "parser.y"
     { symtab_set_current_access(ACCESS_PRIVATE); }
     break;
 
   case 95:
 /* Line 1792 of yacc.c  */
-#line 431 "parser.y"
+#line 442 "parser.y"
     { symtab_set_current_access(ACCESS_PROTECTED); }
     break;
 
   case 96:
 /* Line 1792 of yacc.c  */
-#line 432 "parser.y"
+#line 443 "parser.y"
     { symtab_set_current_access(ACCESS_PUBLIC); }
     break;
 
   case 102:
 /* Line 1792 of yacc.c  */
-#line 448 "parser.y"
+#line 459 "parser.y"
     { ast_free(process_declarations((yyvsp[(1) - (3)].type), (yyvsp[(2) - (3)].decl), SYMBOL_FIELD, STORAGE_MEMBER)); }
     break;
 
   case 103:
 /* Line 1792 of yacc.c  */
-#line 452 "parser.y"
+#line 463 "parser.y"
     { (yyval.decl) = decl_append((yyvsp[(1) - (3)].decl), (yyvsp[(3) - (3)].decl)); }
     break;
 
   case 104:
 /* Line 1792 of yacc.c  */
-#line 453 "parser.y"
+#line 464 "parser.y"
     { (yyval.decl) = (yyvsp[(1) - (1)].decl); }
     break;
 
   case 105:
 /* Line 1792 of yacc.c  */
-#line 458 "parser.y"
+#line 469 "parser.y"
     {
           (yyval.decl) = decl_new((yyvsp[(2) - (3)].sval), (int)(yyvsp[(1) - (3)].ival), (yyvsp[(3) - (3)].dims), yylineno);
       }
@@ -2530,19 +2541,19 @@ yyreduce:
 
   case 106:
 /* Line 1792 of yacc.c  */
-#line 466 "parser.y"
+#line 477 "parser.y"
     { symtab_begin_anonymous_union(); }
     break;
 
   case 107:
 /* Line 1792 of yacc.c  */
-#line 467 "parser.y"
+#line 478 "parser.y"
     { symtab_end_anonymous_union(); }
     break;
 
   case 109:
 /* Line 1792 of yacc.c  */
-#line 473 "parser.y"
+#line 484 "parser.y"
     {
           yyerrok;
           if (diagnostics_too_many_syntax_errors()) YYABORT;
@@ -2551,7 +2562,7 @@ yyreduce:
 
   case 114:
 /* Line 1792 of yacc.c  */
-#line 494 "parser.y"
+#line 505 "parser.y"
     {
           register_pending_function(0);
           free(pending_function_name);
@@ -2561,7 +2572,7 @@ yyreduce:
 
   case 115:
 /* Line 1792 of yacc.c  */
-#line 500 "parser.y"
+#line 511 "parser.y"
     {
           register_pending_function(0);
           free(pending_function_name);
@@ -2571,7 +2582,7 @@ yyreduce:
 
   case 117:
 /* Line 1792 of yacc.c  */
-#line 513 "parser.y"
+#line 524 "parser.y"
     {
           pending_function_return_type = (yyvsp[(2) - (3)].ival) ? type_list((yyvsp[(1) - (3)].type)) : (yyvsp[(1) - (3)].type);
           remember_function((yyvsp[(3) - (3)].sval));
@@ -2581,13 +2592,13 @@ yyreduce:
 
   case 120:
 /* Line 1792 of yacc.c  */
-#line 527 "parser.y"
+#line 538 "parser.y"
     { remember_parameter(NULL, (yyvsp[(1) - (2)].type), PASS_REFERENCE); }
     break;
 
   case 121:
 /* Line 1792 of yacc.c  */
-#line 529 "parser.y"
+#line 540 "parser.y"
     {
           Type *type = apply_declarator((yyvsp[(1) - (3)].type), (int)(yyvsp[(2) - (3)].ival), (yyvsp[(3) - (3)].dims), yylineno);
           remember_parameter(NULL, type,
@@ -2598,7 +2609,7 @@ yyreduce:
 
   case 123:
 /* Line 1792 of yacc.c  */
-#line 543 "parser.y"
+#line 554 "parser.y"
     {
           Type *type = type_named(TYPE_UNION, (yyvsp[(2) - (2)].sval));
           semantic_declare((yyvsp[(2) - (2)].sval), SYMBOL_TYPE, type, STORAGE_NONE, yylineno, 1);
@@ -2611,7 +2622,7 @@ yyreduce:
 
   case 124:
 /* Line 1792 of yacc.c  */
-#line 552 "parser.y"
+#line 563 "parser.y"
     {
           symtab_leave_scope();
       }
@@ -2619,45 +2630,47 @@ yyreduce:
 
   case 125:
 /* Line 1792 of yacc.c  */
-#line 559 "parser.y"
-    { ast_free(process_declarations((yyvsp[(1) - (3)].type), (yyvsp[(2) - (3)].decl), SYMBOL_VARIABLE, STORAGE_GLOBAL)); }
+#line 570 "parser.y"
+    { ir_add_global(process_declarations((yyvsp[(1) - (3)].type), (yyvsp[(2) - (3)].decl), SYMBOL_VARIABLE, STORAGE_GLOBAL)); }
     break;
 
   case 126:
 /* Line 1792 of yacc.c  */
-#line 563 "parser.y"
+#line 574 "parser.y"
     { (yyval.decl) = decl_append((yyvsp[(1) - (3)].decl), (yyvsp[(3) - (3)].decl)); }
     break;
 
   case 127:
 /* Line 1792 of yacc.c  */
-#line 564 "parser.y"
+#line 575 "parser.y"
     { (yyval.decl) = (yyvsp[(1) - (1)].decl); }
     break;
 
   case 128:
 /* Line 1792 of yacc.c  */
-#line 569 "parser.y"
+#line 580 "parser.y"
     { (yyval.decl) = (yyvsp[(1) - (2)].decl); (yyval.decl)->initializer = (yyvsp[(2) - (2)].node); }
     break;
 
   case 131:
 /* Line 1792 of yacc.c  */
-#line 579 "parser.y"
+#line 590 "parser.y"
     {
           if (diagnostics_syntax_count() == 0) {
               semantic_check_function_body((yyvsp[(2) - (2)].node), yylineno);
               printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
               ast_print(stdout, (yyvsp[(2) - (2)].node), 0);
           }
-          ast_free((yyvsp[(2) - (2)].node));
+          ir_add_function(pending_function_name, pending_function_return_type,
+                          pending_method_owner, pending_function_symbol,
+                          symtab_current_scope(), (yyvsp[(2) - (2)].node));
           finish_function_scope();
       }
     break;
 
   case 132:
 /* Line 1792 of yacc.c  */
-#line 589 "parser.y"
+#line 602 "parser.y"
     {
           register_pending_function(1);
           enter_function_scope();
@@ -2666,21 +2679,23 @@ yyreduce:
 
   case 133:
 /* Line 1792 of yacc.c  */
-#line 594 "parser.y"
+#line 607 "parser.y"
     {
           if (diagnostics_syntax_count() == 0) {
               semantic_check_function_body((yyvsp[(3) - (3)].node), yylineno);
               printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
               ast_print(stdout, (yyvsp[(3) - (3)].node), 0);
           }
-          ast_free((yyvsp[(3) - (3)].node));
+          ir_add_function(pending_function_name, pending_function_return_type,
+                          pending_method_owner, pending_function_symbol,
+                          symtab_current_scope(), (yyvsp[(3) - (3)].node));
           finish_function_scope();
       }
     break;
 
   case 134:
 /* Line 1792 of yacc.c  */
-#line 604 "parser.y"
+#line 619 "parser.y"
     {
           register_pending_function(1);
           enter_function_scope();
@@ -2689,21 +2704,23 @@ yyreduce:
 
   case 135:
 /* Line 1792 of yacc.c  */
-#line 609 "parser.y"
+#line 624 "parser.y"
     {
           if (diagnostics_syntax_count() == 0) {
               semantic_check_function_body((yyvsp[(3) - (3)].node), yylineno);
               printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
               ast_print(stdout, (yyvsp[(3) - (3)].node), 0);
           }
-          ast_free((yyvsp[(3) - (3)].node));
+          ir_add_function(pending_function_name, pending_function_return_type,
+                          pending_method_owner, pending_function_symbol,
+                          symtab_current_scope(), (yyvsp[(3) - (3)].node));
           finish_function_scope();
       }
     break;
 
   case 136:
 /* Line 1792 of yacc.c  */
-#line 622 "parser.y"
+#line 639 "parser.y"
     {
           register_pending_function(1);
           enter_function_scope();
@@ -2713,7 +2730,7 @@ yyreduce:
 
   case 137:
 /* Line 1792 of yacc.c  */
-#line 628 "parser.y"
+#line 645 "parser.y"
     {
           register_pending_function(1);
           enter_function_scope();
@@ -2723,7 +2740,7 @@ yyreduce:
 
   case 138:
 /* Line 1792 of yacc.c  */
-#line 637 "parser.y"
+#line 654 "parser.y"
     {
           Type *owner = semantic_resolve_type((yyvsp[(3) - (4)].sval), yylineno);
           size_t length = strlen((yyvsp[(3) - (4)].sval)) + strlen((yyvsp[(4) - (4)].sval)) + 3;
@@ -2751,7 +2768,7 @@ yyreduce:
 
   case 139:
 /* Line 1792 of yacc.c  */
-#line 664 "parser.y"
+#line 681 "parser.y"
     {
           (yyval.sval) = (yyvsp[(1) - (2)].sval);
       }
@@ -2759,7 +2776,7 @@ yyreduce:
 
   case 142:
 /* Line 1792 of yacc.c  */
-#line 676 "parser.y"
+#line 693 "parser.y"
     {
           remember_parameter((yyvsp[(3) - (3)].sval), (yyvsp[(1) - (3)].type), PASS_REFERENCE);
       }
@@ -2767,7 +2784,7 @@ yyreduce:
 
   case 143:
 /* Line 1792 of yacc.c  */
-#line 680 "parser.y"
+#line 697 "parser.y"
     {
           Type *type = apply_declarator((yyvsp[(1) - (4)].type), (int)(yyvsp[(2) - (4)].ival), (yyvsp[(4) - (4)].dims), yylineno);
           remember_parameter((yyvsp[(3) - (4)].sval), type,
@@ -2778,13 +2795,13 @@ yyreduce:
 
   case 145:
 /* Line 1792 of yacc.c  */
-#line 694 "parser.y"
+#line 711 "parser.y"
     { (yyval.node) = ast_new(AST_BLOCK, yylineno, NULL); (yyval.node)->child[0] = (yyvsp[(2) - (3)].node); }
     break;
 
   case 146:
 /* Line 1792 of yacc.c  */
-#line 696 "parser.y"
+#line 713 "parser.y"
     {
           yyerrok;
           if (diagnostics_too_many_syntax_errors()) YYABORT;
@@ -2794,43 +2811,43 @@ yyreduce:
 
   case 147:
 /* Line 1792 of yacc.c  */
-#line 704 "parser.y"
+#line 721 "parser.y"
     { (yyval.node) = ast_append((yyvsp[(1) - (2)].node), (yyvsp[(2) - (2)].node)); }
     break;
 
   case 148:
 /* Line 1792 of yacc.c  */
-#line 705 "parser.y"
+#line 722 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 149:
 /* Line 1792 of yacc.c  */
-#line 706 "parser.y"
+#line 723 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 150:
 /* Line 1792 of yacc.c  */
-#line 707 "parser.y"
+#line 724 "parser.y"
     { (yyval.node) = NULL; }
     break;
 
   case 151:
 /* Line 1792 of yacc.c  */
-#line 711 "parser.y"
+#line 728 "parser.y"
     { (yyval.node) = ast_append((yyvsp[(1) - (2)].node), (yyvsp[(2) - (2)].node)); }
     break;
 
   case 152:
 /* Line 1792 of yacc.c  */
-#line 712 "parser.y"
+#line 729 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 153:
 /* Line 1792 of yacc.c  */
-#line 717 "parser.y"
+#line 734 "parser.y"
     {
           (yyval.node) = process_declarations((yyvsp[(2) - (4)].type), (yyvsp[(3) - (4)].decl), SYMBOL_VARIABLE,
                                     (yyvsp[(1) - (4)].ival) ? STORAGE_STATIC_LOCAL : STORAGE_STACK);
@@ -2839,7 +2856,7 @@ yyreduce:
 
   case 154:
 /* Line 1792 of yacc.c  */
-#line 722 "parser.y"
+#line 739 "parser.y"
     {
           yyerrok;
           if (diagnostics_too_many_syntax_errors()) YYABORT;
@@ -2849,7 +2866,7 @@ yyreduce:
 
   case 155:
 /* Line 1792 of yacc.c  */
-#line 728 "parser.y"
+#line 745 "parser.y"
     {
           /* Common error-production rule: a missing semicolon after a
              local declaration. The unexpected lookahead is retained so
@@ -2862,91 +2879,91 @@ yyreduce:
 
   case 156:
 /* Line 1792 of yacc.c  */
-#line 739 "parser.y"
+#line 756 "parser.y"
     { (yyval.ival) = 1; }
     break;
 
   case 157:
 /* Line 1792 of yacc.c  */
-#line 740 "parser.y"
+#line 757 "parser.y"
     { (yyval.ival) = 0; }
     break;
 
   case 158:
 /* Line 1792 of yacc.c  */
-#line 744 "parser.y"
+#line 761 "parser.y"
     { (yyval.node) = ast_append((yyvsp[(1) - (2)].node), (yyvsp[(2) - (2)].node)); }
     break;
 
   case 159:
 /* Line 1792 of yacc.c  */
-#line 745 "parser.y"
+#line 762 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 160:
 /* Line 1792 of yacc.c  */
-#line 749 "parser.y"
+#line 766 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 161:
 /* Line 1792 of yacc.c  */
-#line 750 "parser.y"
+#line 767 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 162:
 /* Line 1792 of yacc.c  */
-#line 751 "parser.y"
+#line 768 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 163:
 /* Line 1792 of yacc.c  */
-#line 752 "parser.y"
+#line 769 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 164:
 /* Line 1792 of yacc.c  */
-#line 753 "parser.y"
+#line 770 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 165:
 /* Line 1792 of yacc.c  */
-#line 754 "parser.y"
+#line 771 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 166:
 /* Line 1792 of yacc.c  */
-#line 755 "parser.y"
+#line 772 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 167:
 /* Line 1792 of yacc.c  */
-#line 756 "parser.y"
+#line 773 "parser.y"
     { (yyval.node) = semantic_loop_jump(AST_CONTINUE, yylineno); }
     break;
 
   case 168:
 /* Line 1792 of yacc.c  */
-#line 757 "parser.y"
+#line 774 "parser.y"
     { (yyval.node) = semantic_loop_jump(AST_BREAK, yylineno); }
     break;
 
   case 169:
 /* Line 1792 of yacc.c  */
-#line 758 "parser.y"
+#line 775 "parser.y"
     { (yyval.node) = ast_new(AST_EMPTY, yylineno, NULL); }
     break;
 
   case 170:
 /* Line 1792 of yacc.c  */
-#line 760 "parser.y"
+#line 777 "parser.y"
     {
           yyerrok;
           if (diagnostics_too_many_syntax_errors()) YYABORT;
@@ -2956,13 +2973,13 @@ yyreduce:
 
   case 171:
 /* Line 1792 of yacc.c  */
-#line 769 "parser.y"
+#line 786 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (2)].node); }
     break;
 
   case 172:
 /* Line 1792 of yacc.c  */
-#line 774 "parser.y"
+#line 791 "parser.y"
     {
           (yyval.node) = ast_new(AST_IF, yylineno, NULL);
           (yyval.node)->child[0] = semantic_condition((yyvsp[(3) - (5)].node), yylineno);
@@ -2972,7 +2989,7 @@ yyreduce:
 
   case 173:
 /* Line 1792 of yacc.c  */
-#line 780 "parser.y"
+#line 797 "parser.y"
     {
           (yyval.node) = ast_new(AST_IF, yylineno, NULL);
           (yyval.node)->child[0] = semantic_condition((yyvsp[(3) - (7)].node), yylineno);
@@ -2983,13 +3000,13 @@ yyreduce:
 
   case 174:
 /* Line 1792 of yacc.c  */
-#line 790 "parser.y"
+#line 807 "parser.y"
     { semantic_enter_loop(); }
     break;
 
   case 175:
 /* Line 1792 of yacc.c  */
-#line 792 "parser.y"
+#line 809 "parser.y"
     {
           semantic_leave_loop();
           (yyval.node) = ast_new(AST_WHILE, yylineno, NULL);
@@ -3000,13 +3017,13 @@ yyreduce:
 
   case 176:
 /* Line 1792 of yacc.c  */
-#line 802 "parser.y"
+#line 819 "parser.y"
     { semantic_enter_loop(); }
     break;
 
   case 177:
 /* Line 1792 of yacc.c  */
-#line 804 "parser.y"
+#line 821 "parser.y"
     {
           semantic_leave_loop();
           (yyval.node) = ast_new(AST_FOR, yylineno, NULL);
@@ -3019,49 +3036,49 @@ yyreduce:
 
   case 178:
 /* Line 1792 of yacc.c  */
-#line 815 "parser.y"
+#line 832 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 179:
 /* Line 1792 of yacc.c  */
-#line 816 "parser.y"
+#line 833 "parser.y"
     { (yyval.node) = NULL; }
     break;
 
   case 180:
 /* Line 1792 of yacc.c  */
-#line 820 "parser.y"
+#line 837 "parser.y"
     { (yyval.node) = semantic_return((yyvsp[(2) - (3)].node), yylineno); }
     break;
 
   case 181:
 /* Line 1792 of yacc.c  */
-#line 825 "parser.y"
+#line 842 "parser.y"
     { (yyval.node) = ast_new(AST_INPUT, yylineno, NULL); (yyval.node)->child[0] = (yyvsp[(3) - (4)].node); }
     break;
 
   case 182:
 /* Line 1792 of yacc.c  */
-#line 827 "parser.y"
+#line 844 "parser.y"
     { (yyval.node) = ast_new(AST_OUTPUT, yylineno, NULL); (yyval.node)->child[0] = (yyvsp[(3) - (4)].node); }
     break;
 
   case 183:
 /* Line 1792 of yacc.c  */
-#line 831 "parser.y"
+#line 848 "parser.y"
     { (yyval.node) = ast_append((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node)); }
     break;
 
   case 184:
 /* Line 1792 of yacc.c  */
-#line 832 "parser.y"
+#line 849 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 185:
 /* Line 1792 of yacc.c  */
-#line 837 "parser.y"
+#line 854 "parser.y"
     {
           if (!(yyvsp[(1) - (1)].node)->is_lvalue) semantic_error(yylineno, "cin item is not an lvalue");
           (yyval.node) = (yyvsp[(1) - (1)].node);
@@ -3070,25 +3087,25 @@ yyreduce:
 
   case 186:
 /* Line 1792 of yacc.c  */
-#line 844 "parser.y"
+#line 861 "parser.y"
     { (yyval.node) = ast_append((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node)); }
     break;
 
   case 187:
 /* Line 1792 of yacc.c  */
-#line 845 "parser.y"
+#line 862 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 188:
 /* Line 1792 of yacc.c  */
-#line 849 "parser.y"
+#line 866 "parser.y"
     { (yyval.node) = (yyvsp[(1) - (1)].node); }
     break;
 
   case 189:
 /* Line 1792 of yacc.c  */
-#line 854 "parser.y"
+#line 871 "parser.y"
     {
           symtab_enter_scope("compound block");
       }
@@ -3096,7 +3113,7 @@ yyreduce:
 
   case 190:
 /* Line 1792 of yacc.c  */
-#line 861 "parser.y"
+#line 878 "parser.y"
     {
           symtab_leave_scope();
           (yyval.node) = ast_new(AST_BLOCK, yylineno, NULL);
@@ -3106,7 +3123,7 @@ yyreduce:
 
   case 191:
 /* Line 1792 of yacc.c  */
-#line 867 "parser.y"
+#line 884 "parser.y"
     {
           yyerrok;
           if (diagnostics_too_many_syntax_errors()) YYABORT;
@@ -3117,9 +3134,9 @@ yyreduce:
 
   case 192:
 /* Line 1792 of yacc.c  */
-#line 877 "parser.y"
+#line 894 "parser.y"
     {
-          semantic_declare_function("main", type_function(type_int(), NULL), yylineno, 1);
+          main_symbol = semantic_declare_function("main", type_function(type_int(), NULL), yylineno, 1);
           symtab_enter_scope("main");
           semantic_begin_function(type_int());
       }
@@ -3127,14 +3144,15 @@ yyreduce:
 
   case 193:
 /* Line 1792 of yacc.c  */
-#line 883 "parser.y"
+#line 900 "parser.y"
     {
           if (diagnostics_syntax_count() == 0) {
               semantic_check_function_body((yyvsp[(3) - (3)].node), yylineno);
               puts("\n=== ABSTRACT SYNTAX TREE: main ===");
               ast_print(stdout, (yyvsp[(3) - (3)].node), 0);
           }
-          ast_free((yyvsp[(3) - (3)].node));
+          ir_add_function("main", type_int(), NULL, main_symbol,
+                          symtab_current_scope(), (yyvsp[(3) - (3)].node));
           semantic_end_function();
           symtab_leave_scope();
       }
@@ -3142,7 +3160,7 @@ yyreduce:
 
 
 /* Line 1792 of yacc.c  */
-#line 3146 "parser.tab.c"
+#line 3164 "parser.tab.c"
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -3374,7 +3392,7 @@ yyreturn:
 
 
 /* Line 2055 of yacc.c  */
-#line 899 "parser.y"
+#line 917 "parser.y"
 
 
 static void declare_enum_value(char *name, AstNode *initializer)
@@ -3528,11 +3546,11 @@ static void register_pending_function(int definition)
     parameter_free(parameters);
 
     if (pending_method_owner)
-        semantic_declare_method(pending_method_owner,
+        pending_function_symbol = semantic_declare_method(pending_method_owner,
             pending_method_name ? pending_method_name : "<anonymous>",
             function_type, yylineno, definition);
     else
-        semantic_declare_function(
+        pending_function_symbol = semantic_declare_function(
             pending_function_name ? pending_function_name : "<anonymous>",
             function_type, yylineno, definition);
 }
@@ -3643,6 +3661,7 @@ static AstNode *process_declarations(Type *base, DeclItem *items,
         semantic_store_initial_value(symbol, items->initializer);
         declaration = ast_new(AST_DECL, items->line, items->name);
         declaration->type = type;
+        declaration->symbol = symbol;
         declaration->child[0] = items->initializer;
         items->initializer = NULL;
         declarations = ast_append(declarations, declaration);
@@ -3664,14 +3683,27 @@ void yyerror(const char *message)
 static void print_usage(const char *program_name)
 {
     fprintf(stderr,
-            "Usage: %s [-q|--quiet-tokens] <source.cpp>\n"
+            "Usage: %s [-q|--quiet-tokens] [-o output.asm] <source.cpp>\n"
             "  -q, --quiet-tokens   do not print every token returned by the lexer\n",
             program_name);
+}
+
+static char *default_output_name(const char *source)
+{
+    const char *dot = strrchr(source, '.');
+    size_t stem = dot ? (size_t)(dot - source) : strlen(source);
+    char *result = malloc(stem + 5);
+    if (!result) { fputs("Out of memory\n", stderr); exit(EXIT_FAILURE); }
+    memcpy(result, source, stem);
+    memcpy(result + stem, ".asm", 5);
+    return result;
 }
 
 int main(int argc, char **argv)
 {
     const char *filename = NULL;
+    const char *output_filename = NULL;
+    char *owned_output_filename = NULL;
     int trace_tokens = 1;
     int index;
     int parse_result;
@@ -3681,6 +3713,8 @@ int main(int argc, char **argv)
         if (strcmp(argv[index], "-q") == 0 ||
             strcmp(argv[index], "--quiet-tokens") == 0) {
             trace_tokens = 0;
+        } else if (strcmp(argv[index], "-o") == 0 && index + 1 < argc) {
+            output_filename = argv[++index];
         } else if (filename == NULL) {
             filename = argv[index];
         } else {
@@ -3712,6 +3746,7 @@ int main(int argc, char **argv)
     types_init();
     symtab_init();
     semantic_init();
+    ir_init();
 
     parse_result = yyparse();
 
@@ -3719,24 +3754,35 @@ int main(int argc, char **argv)
     if (parse_result == 0 && diagnostics_lexical_count() == 0 &&
         diagnostics_syntax_count() == 0)
         semantic_verify_all_prototypes();
-    symtab_finish();
-
     success = parse_result == 0 &&
               diagnostics_lexical_count() == 0 &&
               diagnostics_syntax_count() == 0 &&
               semantic_error_count() == 0;
+
+    if (success) {
+        if (!output_filename) {
+            owned_output_filename = default_output_name(filename);
+            output_filename = owned_output_filename;
+        }
+        if (codegen_mips(output_filename) != 0) success = 0;
+    }
 
     printf("\n=== ANALYSIS SUMMARY ===\n");
     printf("Lexical errors : %d\n", diagnostics_lexical_count());
     printf("Syntax errors  : %d\n", diagnostics_syntax_count());
     printf("Semantic errors: %d\n", semantic_error_count());
     printf("Result         : %s\n", success ? "ACCEPTED" : "REJECTED");
+    if (success) printf("MIPS output    : %s\n", output_filename);
+
+    ir_finish();
+    symtab_finish();
 
     clear_pending_parameters();
     free(pending_function_name);
     pending_function_name = NULL;
     free(pending_method_name);
     pending_method_name = NULL;
+    free(owned_output_filename);
     fclose(yyin);
     diagnostics_free_source();
     semantic_finish();

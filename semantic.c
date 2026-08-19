@@ -137,6 +137,7 @@ AstNode *semantic_identifier(const char *name, int line)
     if (symbol->kind == SYMBOL_TYPE && symbol->type->kind != TYPE_ENUM)
         semantic_error(line, "type name '%s' used as a value", name);
     node = ast_text(AST_IDENTIFIER, name, symbol->type, line);
+    node->symbol = symbol;
     node->is_lvalue = symbol->kind == SYMBOL_VARIABLE || symbol->kind == SYMBOL_PARAMETER ||
                       symbol->kind == SYMBOL_FIELD;
     node->is_constant = symbol->kind == SYMBOL_CONSTANT || symbol->kind == SYMBOL_ENUM_VALUE;
@@ -170,6 +171,11 @@ AstNode *semantic_binary(const char *op, AstNode *left, AstNode *right, int line
     } else {
         if (!(type_assignable(left->type, right->type) || type_assignable(right->type, left->type)))
             semantic_error(line, "incompatible operands for comparison '%s'", op);
+        if (type_is_numeric(left->type) && type_is_numeric(right->type)) {
+            Type *common = type_common_numeric(left->type, right->type);
+            left = ast_cast(left, common, line);
+            right = ast_cast(right, common, line);
+        }
         result = type_int();
     }
     {
@@ -208,7 +214,8 @@ AstNode *semantic_unary(const char *op, AstNode *operand, int line)
     } else if (!strcmp(op, "!")) {
         if (!type_is_scalar(operand->type)) semantic_error(line, "logical negation requires scalar operand");
         result = type_int();
-    } else if (!strcmp(op, "++") || !strcmp(op, "--")) {
+    } else if (!strcmp(op, "++") || !strcmp(op, "--") ||
+               !strcmp(op, "post++") || !strcmp(op, "post--")) {
         if (!operand->is_lvalue || !type_is_numeric(operand->type))
             semantic_error(line, "operator '%s' requires a numeric lvalue", op);
     } else if (!strcmp(op, "sizeof")) result = type_int();
@@ -282,6 +289,7 @@ AstNode *semantic_member(AstNode *object, const char *name, int line)
         semantic_error(line, "member '%s' is %s in class '%s'",
                        name, access_kind_name(member->access), declaring->name);
     node = ast_new(AST_MEMBER, line, name); node->type = member->type;
+    node->symbol = member;
     node->is_lvalue = member->kind == SYMBOL_FIELD;
     node->is_constant = member->kind == SYMBOL_ENUM_VALUE || member->kind == SYMBOL_CONSTANT;
     if (node->is_constant) {

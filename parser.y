@@ -11,6 +11,8 @@
 #include "semantic.h"
 #include "types.h"
 #include "parser_types.h"
+#include "ir.h"
+#include "codegen.h"
 
 extern int yylex(void);
 extern int yylineno;
@@ -23,6 +25,8 @@ void yyerror(const char *message);
 static char *pending_function_name = NULL;
 static char *pending_method_name = NULL;
 static Type *pending_method_owner = NULL;
+static Symbol *pending_function_symbol = NULL;
+static Symbol *main_symbol = NULL;
 
 typedef struct PendingParameter {
     char *name;
@@ -200,8 +204,14 @@ constdef
           symbol = semantic_declare($1, SYMBOL_CONSTANT, type,
                                     STORAGE_NONE, yylineno, 1);
           semantic_store_constant(symbol, $4, yylineno);
+          {
+              AstNode *declaration = ast_new(AST_DECL, yylineno, $1);
+              declaration->type = type;
+              declaration->symbol = symbol;
+              declaration->child[0] = $4;
+              ir_add_global(declaration);
+          }
           dim_free($2);
-          ast_free($4);
           discard_text($1);
       }
     ;
@@ -271,7 +281,8 @@ unary_expression
 
 postfix_expression
     : variable INCDEC
-      { $$ = semantic_unary($2, $1, yylineno); free($2); }
+      { $$ = semantic_unary(strcmp($2, "++") == 0 ? "post++" : "post--",
+                            $1, yylineno); free($2); }
     | variable { $$ = $1; }
     | variable LPAREN expression_list RPAREN { $$ = semantic_call($1, $3, yylineno); }
     | LENGTH LPAREN general_expression RPAREN
@@ -556,7 +567,7 @@ union_declaration
 
 global_var_declaration
     : typename init_variabledefs SEMI
-      { ast_free(process_declarations($1, $2, SYMBOL_VARIABLE, STORAGE_GLOBAL)); }
+      { ir_add_global(process_declarations($1, $2, SYMBOL_VARIABLE, STORAGE_GLOBAL)); }
     ;
 
 init_variabledefs
@@ -582,7 +593,9 @@ full_func_declaration
               printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
               ast_print(stdout, $2, 0);
           }
-          ast_free($2);
+          ir_add_function(pending_function_name, pending_function_return_type,
+                          pending_method_owner, pending_function_symbol,
+                          symtab_current_scope(), $2);
           finish_function_scope();
       }
     | nopar_class_func_header
@@ -597,7 +610,9 @@ full_func_declaration
               printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
               ast_print(stdout, $3, 0);
           }
-          ast_free($3);
+          ir_add_function(pending_function_name, pending_function_return_type,
+                          pending_method_owner, pending_function_symbol,
+                          symtab_current_scope(), $3);
           finish_function_scope();
       }
     | nopar_func_header
@@ -612,7 +627,9 @@ full_func_declaration
               printf("\n=== ABSTRACT SYNTAX TREE: %s ===\n", pending_function_name);
               ast_print(stdout, $3, 0);
           }
-          ast_free($3);
+          ir_add_function(pending_function_name, pending_function_return_type,
+                          pending_method_owner, pending_function_symbol,
+                          symtab_current_scope(), $3);
           finish_function_scope();
       }
     ;
@@ -875,7 +892,7 @@ comp_statement
 main_function
     : main_header
       {
-          semantic_declare_function("main", type_function(type_int(), NULL), yylineno, 1);
+          main_symbol = semantic_declare_function("main", type_function(type_int(), NULL), yylineno, 1);
           symtab_enter_scope("main");
           semantic_begin_function(type_int());
       }
@@ -886,7 +903,8 @@ main_function
               puts("\n=== ABSTRACT SYNTAX TREE: main ===");
               ast_print(stdout, $3, 0);
           }
-          ast_free($3);
+          ir_add_function("main", type_int(), NULL, main_symbol,
+                          symtab_current_scope(), $3);
           semantic_end_function();
           symtab_leave_scope();
       }
@@ -1049,11 +1067,11 @@ static void register_pending_function(int definition)
     parameter_free(parameters);
 
     if (pending_method_owner)
-        semantic_declare_method(pending_method_owner,
+        pending_function_symbol = semantic_declare_method(pending_method_owner,
             pending_method_name ? pending_method_name : "<anonymous>",
             function_type, yylineno, definition);
     else
-        semantic_declare_function(
+        pending_function_symbol = semantic_declare_function(
             pending_function_name ? pending_function_name : "<anonymous>",
             function_type, yylineno, definition);
 }
@@ -1164,6 +1182,7 @@ static AstNode *process_declarations(Type *base, DeclItem *items,
         semantic_store_initial_value(symbol, items->initializer);
         declaration = ast_new(AST_DECL, items->line, items->name);
         declaration->type = type;
+        declaration->symbol = symbol;
         declaration->child[0] = items->initializer;
         items->initializer = NULL;
         declarations = ast_append(declarations, declaration);
@@ -1185,14 +1204,27 @@ void yyerror(const char *message)
 static void print_usage(const char *program_name)
 {
     fprintf(stderr,
-            "Usage: %s [-q|--quiet-tokens] <source.cpp>\n"
+            "Usage: %s [-q|--quiet-tokens] [-o output.asm] <source.cpp>\n"
             "  -q, --quiet-tokens   do not print every token returned by the lexer\n",
             program_name);
+}
+
+static char *default_output_name(const char *source)
+{
+    const char *dot = strrchr(source, '.');
+    size_t stem = dot ? (size_t)(dot - source) : strlen(source);
+    char *result = malloc(stem + 5);
+    if (!result) { fputs("Out of memory\n", stderr); exit(EXIT_FAILURE); }
+    memcpy(result, source, stem);
+    memcpy(result + stem, ".asm", 5);
+    return result;
 }
 
 int main(int argc, char **argv)
 {
     const char *filename = NULL;
+    const char *output_filename = NULL;
+    char *owned_output_filename = NULL;
     int trace_tokens = 1;
     int index;
     int parse_result;
@@ -1202,6 +1234,8 @@ int main(int argc, char **argv)
         if (strcmp(argv[index], "-q") == 0 ||
             strcmp(argv[index], "--quiet-tokens") == 0) {
             trace_tokens = 0;
+        } else if (strcmp(argv[index], "-o") == 0 && index + 1 < argc) {
+            output_filename = argv[++index];
         } else if (filename == NULL) {
             filename = argv[index];
         } else {
@@ -1233,6 +1267,7 @@ int main(int argc, char **argv)
     types_init();
     symtab_init();
     semantic_init();
+    ir_init();
 
     parse_result = yyparse();
 
@@ -1240,24 +1275,35 @@ int main(int argc, char **argv)
     if (parse_result == 0 && diagnostics_lexical_count() == 0 &&
         diagnostics_syntax_count() == 0)
         semantic_verify_all_prototypes();
-    symtab_finish();
-
     success = parse_result == 0 &&
               diagnostics_lexical_count() == 0 &&
               diagnostics_syntax_count() == 0 &&
               semantic_error_count() == 0;
+
+    if (success) {
+        if (!output_filename) {
+            owned_output_filename = default_output_name(filename);
+            output_filename = owned_output_filename;
+        }
+        if (codegen_mips(output_filename) != 0) success = 0;
+    }
 
     printf("\n=== ANALYSIS SUMMARY ===\n");
     printf("Lexical errors : %d\n", diagnostics_lexical_count());
     printf("Syntax errors  : %d\n", diagnostics_syntax_count());
     printf("Semantic errors: %d\n", semantic_error_count());
     printf("Result         : %s\n", success ? "ACCEPTED" : "REJECTED");
+    if (success) printf("MIPS output    : %s\n", output_filename);
+
+    ir_finish();
+    symtab_finish();
 
     clear_pending_parameters();
     free(pending_function_name);
     pending_function_name = NULL;
     free(pending_method_name);
     pending_method_name = NULL;
+    free(owned_output_filename);
     fclose(yyin);
     diagnostics_free_source();
     semantic_finish();

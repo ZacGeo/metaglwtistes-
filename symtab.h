@@ -19,6 +19,8 @@ typedef enum AccessKind {
     ACCESS_PUBLIC
 } AccessKind;
 
+typedef struct Scope Scope;
+
 typedef struct Symbol {
     char *name;
     SymbolKind kind;
@@ -34,18 +36,22 @@ typedef struct Symbol {
     char *constant_text;
     AccessKind access;
     Type *owner_type;
+    Scope *scope;
     unsigned anonymous_union_member : 1;
     struct Symbol *next;
     struct Symbol *order_next;
 } Symbol;
-
-typedef struct Scope Scope;
 
 void symtab_init(void);
 void symtab_finish(void);
 Scope *symtab_enter_scope(const char *label);
 void symtab_leave_scope(void);
 Scope *symtab_current_scope(void);
+Scope *symtab_root_scope(void);
+long symtab_global_size(void);
+long symtab_scope_total_size(const Scope *scope);
+const char *symtab_scope_label(const Scope *scope);
+Symbol *symtab_scope_first_symbol(const Scope *scope);
 const char *symtab_current_label(void);
 int symtab_current_depth(void);
 Type *symtab_current_owner_type(void);

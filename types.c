@@ -93,8 +93,9 @@ Type *type_list(Type *element)
 {
     Type *type = new_type(TYPE_LIST, NULL);
     type->base = element;
-    type->size = sizeof(void *);
-    type->alignment = sizeof(void *);
+    /* The target is 32-bit MIPS; target sizes must not depend on the host. */
+    type->size = 4;
+    type->alignment = 4;
     return type;
 }
 

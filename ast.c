@@ -12,6 +12,9 @@ AstNode *ast_new(AstKind kind, int line, const char *text)
     if (!node) die();
     node->kind = kind;
     node->line = line;
+    node->temporary_id = -1;
+    node->register_color = -1;
+    node->spill_offset = -1;
     node->text = text ? strdup(text) : NULL;
     return node;
 }
@@ -36,7 +39,21 @@ AstNode *ast_text(AstKind kind, const char *value, Type *type, int line)
 {
     AstNode *node = ast_new(kind, line, value);
     node->type = type; node->is_constant = kind == AST_CHAR || kind == AST_STRING;
-    if (kind == AST_CHAR) node->constant_kind = CONST_VALUE_CHAR;
+    if (kind == AST_CHAR) {
+        node->constant_kind = CONST_VALUE_CHAR;
+        if (value && value[0] == '\'' && value[1] == '\\') {
+            switch (value[2]) {
+            case 'n': node->int_value = '\n'; break;
+            case 'f': node->int_value = '\f'; break;
+            case 't': node->int_value = '\t'; break;
+            case 'r': node->int_value = '\r'; break;
+            case 'b': node->int_value = '\b'; break;
+            case 'v': node->int_value = '\v'; break;
+            default: node->int_value = (unsigned char)value[2]; break;
+            }
+        } else if (value && value[0] == '\'' && value[1])
+            node->int_value = (unsigned char)value[1];
+    }
     if (kind == AST_STRING) node->constant_kind = CONST_VALUE_STRING;
     if (node->is_constant) {
         node->constant_text = strdup(value ? value : "");

@@ -3,6 +3,8 @@
 
 #include "types.h"
 
+struct Symbol;
+
 typedef enum AstKind {
     AST_PROGRAM, AST_FUNCTION, AST_BLOCK, AST_DECL, AST_EMPTY,
     AST_IDENTIFIER, AST_INT, AST_FLOAT, AST_CHAR, AST_STRING, AST_LIST,
@@ -22,6 +24,10 @@ typedef struct AstNode {
     char *constant_text;
     long long int_value;
     double float_value;
+    struct Symbol *symbol;
+    int temporary_id;
+    int register_color;
+    long spill_offset;
     struct AstNode *child[4];
     struct AstNode *next;
 } AstNode;
