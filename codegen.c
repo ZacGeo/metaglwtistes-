@@ -7,14 +7,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define FRAME_ADMIN_BYTES 80L
+#define FRAME_ADMIN_BYTES 80L /* Χώρος διαχείρισης πλαισίου. */
 
+/* Αντιστοίχιση string literal σε ετικέτα. */
 typedef struct LiteralLabel {
     const AstNode *node;
     char *label;
     struct LiteralLabel *next;
 } LiteralLabel;
 
+/* Αντιστοίχιση μορφής I/O σε ετικέτα. */
 typedef struct FormatLabel {
     const AstNode *node;
     char *label;
@@ -22,6 +24,7 @@ typedef struct FormatLabel {
     struct FormatLabel *next;
 } FormatLabel;
 
+/* Κατάσταση παραγωγής κώδικα μιας συνάρτησης. */
 typedef struct Context {
     FILE *out;
     IrFunction *function;
@@ -33,13 +36,16 @@ typedef struct Context {
     int loop_depth;
 } Context;
 
+/* Λίστες ετικετών και μετρητές μοναδικών ονομάτων. */
 static LiteralLabel *literal_labels;
 static FormatLabel *format_labels;
 static int literal_counter;
 static int format_counter;
 
+/* Ευθυγραμμίζει μέγεθος σε όριο τεσσάρων bytes. */
 static long align4(long value) { return (value + 3) & ~3L; }
 
+/* Αντιγράφει συμβολοσειρά με έλεγχο μνήμης. */
 static char *xstrdup(const char *text)
 {
     char *copy = strdup(text ? text : "");
@@ -47,6 +53,7 @@ static char *xstrdup(const char *text)
     return copy;
 }
 
+/* Μετατρέπει όνομα CPP σε έγκυρη MIPS ετικέτα. */
 static void mangle(char *target, size_t size, const char *name)
 {
     size_t used = 0;
@@ -61,6 +68,7 @@ static void mangle(char *target, size_t size, const char *name)
     target[used] = '\0';
 }
 
+/* Διαφεύγει συμβολοσειρά για το τμήμα .data. */
 static void escape_string(FILE *out, const char *text)
 {
     const unsigned char *cursor = (const unsigned char *)(text ? text : "");
@@ -80,6 +88,7 @@ static void escape_string(FILE *out, const char *text)
     fputc('"', out);
 }
 
+/* Συλλέγει literals και μορφές I/O από το AST. */
 static void collect_literals(AstNode *node)
 {
     int index;
@@ -123,6 +132,7 @@ static void collect_literals(AstNode *node)
     }
 }
 
+/* Βρίσκει την ετικέτα μορφής ενός κόμβου I/O. */
 static const char *format_label(const AstNode *node)
 {
     FormatLabel *entry;
@@ -131,6 +141,7 @@ static const char *format_label(const AstNode *node)
     return "__empty_string";
 }
 
+/* Βρίσκει την ετικέτα ενός string literal. */
 static const char *literal_label(const AstNode *node)
 {
     LiteralLabel *entry;
@@ -139,6 +150,7 @@ static const char *literal_label(const AstNode *node)
     return "__empty_string";
 }
 
+/* Αποδεσμεύει τις προσωρινές λίστες ετικετών. */
 static void free_literals(void)
 {
     while (literal_labels) {
@@ -156,27 +168,32 @@ static void free_literals(void)
     }
 }
 
+/* Ελέγχει αν ο τύπος είναι float. */
 static int is_float_type(const Type *type)
 {
     return type && type->kind == TYPE_FLOAT;
 }
 
+/* Ελέγχει αν ο τύπος είναι σύνθετος. */
 static int is_aggregate_type(const Type *type)
 {
     return type && (type->kind == TYPE_STRING || type->kind == TYPE_ARRAY ||
                     type->kind == TYPE_CLASS || type->kind == TYPE_UNION);
 }
 
+/* Επιστρέφει τον ακέραιο καταχωρητή του κόμβου. */
 static const char *ireg(const AstNode *node)
 {
     return regalloc_integer_name(node ? node->register_color : -1);
 }
 
+/* Επιστρέφει τον float καταχωρητή του κόμβου. */
 static const char *freg(const AstNode *node)
 {
     return regalloc_float_name(node ? node->register_color : -1);
 }
 
+/* Αποθηκεύει spilled τιμή στη στοίβα. */
 static void store_spill(Context *context, AstNode *node, const char *reg)
 {
     if (node && node->spill_offset >= 0)
@@ -184,6 +201,7 @@ static void store_spill(Context *context, AstNode *node, const char *reg)
                 is_float_type(node->type) ? "s.s" : "sw", reg, node->spill_offset);
 }
 
+/* Φορτώνει τιμή από καταχωρητή ή spill θέση. */
 static const char *load_value(Context *context, AstNode *node, const char *scratch)
 {
     if (!node) return "$zero";
@@ -195,6 +213,7 @@ static const char *load_value(Context *context, AstNode *node, const char *scrat
     return is_float_type(node->type) ? freg(node) : ireg(node);
 }
 
+/* Αποθηκεύει τους προσωρινούς καταχωρητές. */
 static void save_volatile_registers(Context *context)
 {
     int index;
@@ -206,6 +225,7 @@ static void save_volatile_registers(Context *context)
                 context->frame_size - 48 + index * 4L);
 }
 
+/* Επαναφέρει τους προσωρινούς καταχωρητές. */
 static void restore_volatile_registers(Context *context)
 {
     int index;
@@ -217,8 +237,10 @@ static void restore_volatile_registers(Context *context)
                 context->frame_size - 48 + index * 4L);
 }
 
+/* Παράγει κώδικα για μία έκφραση. */
 static void emit_expr(Context *context, AstNode *node);
 
+/* Μετατρέπει μία τιμή σε λογικό 0 ή 1. */
 static void emit_boolean_value(Context *context, AstNode *node, const char *target)
 {
     const char *value;
@@ -240,6 +262,7 @@ static void emit_boolean_value(Context *context, AstNode *node, const char *targ
     }
 }
 
+/* Υπολογίζει τη διεύθυνση μιας lvalue έκφρασης. */
 static void emit_address(Context *context, AstNode *node, const char *target)
 {
     Symbol *symbol;
@@ -283,6 +306,7 @@ static void emit_address(Context *context, AstNode *node, const char *target)
     fprintf(context->out, "    # address requested for %s\n", ast_kind_name(node->kind));
 }
 
+/* Παράγει κλήση συνάρτησης ή μεθόδου. */
 static void emit_call(Context *context, AstNode *node)
 {
     AstNode *actual;
@@ -342,6 +366,7 @@ static void emit_call(Context *context, AstNode *node)
     store_spill(context, node, is_float_type(node->type) ? freg(node) : ireg(node));
 }
 
+/* Παράγει MIPS ανά κατηγορία έκφρασης. */
 static void emit_expr(Context *context, AstNode *node)
 {
     const char *destination;
@@ -599,10 +624,12 @@ static void emit_expr(Context *context, AstNode *node)
     store_spill(context, node, destination);
 }
 
+/* Αρχικοποιεί τιμή σύμφωνα με τον δηλωμένο τύπο. */
 static void emit_typed_initializer(Context *context, Type *type,
                                    AstNode *initializer, const char *base_register,
                                    long base_offset);
 
+/* Αρχικοποιεί διαδοχικά τα πεδία μιας κλάσης. */
 static void emit_class_initializers(Context *context, Type *type, AstNode **item,
                                     const char *base_register, long base_offset)
 {
@@ -620,6 +647,7 @@ static void emit_class_initializers(Context *context, Type *type, AstNode **item
     }
 }
 
+/* Παράγει αρχικοποίηση scalar ή σύνθετης τιμής. */
 static void emit_typed_initializer(Context *context, Type *type,
                                    AstNode *initializer, const char *base_register,
                                    long base_offset)
@@ -678,6 +706,7 @@ static void emit_typed_initializer(Context *context, Type *type,
     }
 }
 
+/* Παράγει τις αρχικοποιήσεις καθολικών μεταβλητών. */
 static void emit_global_initializers(Context *context)
 {
     AstNode *declaration;
@@ -690,12 +719,14 @@ static void emit_global_initializers(Context *context)
     }
 }
 
+/* Δημιουργεί μοναδική ετικέτα ελέγχου ροής. */
 static void make_label(Context *context, char *buffer, size_t size, const char *prefix)
 {
     fprintf(context->out, "    # label %s_%d\n", prefix, context->label_counter);
     snprintf(buffer, size, "__%s_%d", prefix, context->label_counter++);
 }
 
+/* Παράγει MIPS για λίστα εντολών. */
 static void emit_statement(Context *context, AstNode *node)
 {
     while (node) {
@@ -841,6 +872,7 @@ static void emit_statement(Context *context, AstNode *node)
     }
 }
 
+/* Παράγει prologue, σώμα και epilogue συνάρτησης. */
 static void emit_function(FILE *out, IrFunction *function)
 {
     Context context = { 0 };
@@ -882,6 +914,7 @@ static void emit_function(FILE *out, IrFunction *function)
     fprintf(out, "    jr $ra\n    nop\n");
 }
 
+/* Ενσωματώνει τις βοηθητικές ρουτίνες λιστών. */
 static void emit_list_runtime(FILE *out)
 {
     fputs(
@@ -958,6 +991,7 @@ static void emit_list_runtime(FILE *out)
         "    nop\n", out);
 }
 
+/* Παράγει ολόκληρο το τελικό αρχείο MIPS. */
 int codegen_mips(const char *output_path)
 {
     FILE *out;

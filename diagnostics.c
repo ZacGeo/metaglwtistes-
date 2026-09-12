@@ -1,6 +1,4 @@
-/* ============================================================
-   diagnostics.c  —  Υλοποίηση διαχείρισης σφαλμάτων CPP
-   ============================================================ */
+/* Διαχείριση λεκτικών και συντακτικών σφαλμάτων. */
 #define _POSIX_C_SOURCE 200809L
 
 #include <stdio.h>
@@ -8,29 +6,28 @@
 #include <string.h>
 #include "diagnostics.h"
 
-#define MAX_SYNTAX_ERRORS 5
+#define MAX_SYNTAX_ERRORS 5 /* Όριο πριν από τη διακοπή. */
 
+/* Μετρητές σφαλμάτων. */
 static int  lexical_errors = 0;
 static int  syntax_errors  = 0;
 
-/* ── Source lines για pretty-print ── */
+/* Αποθηκευμένες γραμμές του πηγαίου αρχείου. */
 static char **source_lines   = NULL;
 static int    source_count   = 0;
 
-/* ============================================================
-   Φόρτωση source
-   ============================================================ */
+/* Φορτώνει το πηγαίο αρχείο ανά γραμμή. */
 int diagnostics_load_source(const char *filename)
 {
     FILE *f = fopen(filename, "r");
     if (!f) return -1;
 
-    /* Μέτρησε γραμμές */
+    /* Μετρά τις γραμμές. */
     int   lines = 0;
     int   c;
     while ((c = fgetc(f)) != EOF)
         if (c == '\n') lines++;
-    lines++;   /* τελευταία γραμμή χωρίς \n */
+    lines++;   /* Τελευταία γραμμή χωρίς \n. */
     rewind(f);
 
     source_lines = calloc((size_t)lines, sizeof(char *));
@@ -39,7 +36,7 @@ int diagnostics_load_source(const char *filename)
     char  buf[4096];
     int   idx = 0;
     while (fgets(buf, sizeof(buf), f) && idx < lines) {
-        /* Αφαίρεσε trailing newline */
+        /* Αφαιρεί τους χαρακτήρες αλλαγής γραμμής. */
         size_t len = strlen(buf);
         if (len > 0 && buf[len-1] == '\n') buf[--len] = '\0';
         if (len > 0 && buf[len-1] == '\r') buf[--len] = '\0';
@@ -50,6 +47,7 @@ int diagnostics_load_source(const char *filename)
     return 0;
 }
 
+/* Αποδεσμεύει τις αποθηκευμένες γραμμές. */
 void diagnostics_free_source(void)
 {
     for (int i = 0; i < source_count; i++)
@@ -59,7 +57,7 @@ void diagnostics_free_source(void)
     source_count = 0;
 }
 
-/* ── Εκτύπωση γραμμής source ── */
+/* Εκτυπώνει τη γραμμή όπου εμφανίστηκε το σφάλμα. */
 static void print_source_line(int line)
 {
     int idx = line - 1;
@@ -67,9 +65,7 @@ static void print_source_line(int line)
         fprintf(stderr, "    %s\n", source_lines[idx]);
 }
 
-/* ============================================================
-   Αναφορά σφαλμάτων
-   ============================================================ */
+/* Καταγράφει λεκτικό σφάλμα. */
 void diagnostics_lexical_error(int line, const char *message)
 {
     lexical_errors++;
@@ -77,6 +73,7 @@ void diagnostics_lexical_error(int line, const char *message)
     print_source_line(line);
 }
 
+/* Καταγράφει συντακτικό σφάλμα. */
 void diagnostics_syntax_error(int line, const char *message)
 {
     syntax_errors++;
@@ -86,12 +83,11 @@ void diagnostics_syntax_error(int line, const char *message)
         fprintf(stderr, "Too many errors — stopping analysis.\n");
 }
 
-/* ============================================================
-   Μετρητές
-   ============================================================ */
+/* Επιστρέφουν τα πλήθη σφαλμάτων. */
 int diagnostics_lexical_count(void) { return lexical_errors; }
 int diagnostics_syntax_count(void)  { return syntax_errors;  }
 
+/* Ελέγχει αν συμπληρώθηκε το όριο σφαλμάτων. */
 int diagnostics_too_many_syntax_errors(void)
 {
     return syntax_errors >= MAX_SYNTAX_ERRORS;

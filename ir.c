@@ -5,16 +5,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Κεντρικές λίστες της ενδιάμεσης αναπαράστασης. */
 static AstNode *global_declarations;
 static IrFunction *first_function;
 static IrFunction *last_function;
 
+/* Τερματίζει αν αποτύχει δέσμευση μνήμης. */
 static void die(void)
 {
     fputs("Out of memory\n", stderr);
     exit(EXIT_FAILURE);
 }
 
+/* Αρχικοποιεί την ενδιάμεση αναπαράσταση. */
 void ir_init(void)
 {
     global_declarations = NULL;
@@ -22,11 +25,13 @@ void ir_init(void)
     last_function = NULL;
 }
 
+/* Προσθέτει καθολικές δηλώσεις. */
 void ir_add_global(AstNode *declarations)
 {
     global_declarations = ast_append(global_declarations, declarations);
 }
 
+/* Προσθέτει μία συνάρτηση στην IR. */
 void ir_add_function(const char *name, Type *return_type, Type *owner_type,
                      Symbol *symbol, Scope *scope, AstNode *body)
 {
@@ -44,9 +49,13 @@ void ir_add_function(const char *name, Type *return_type, Type *owner_type,
     last_function = function;
 }
 
+/* Επιστρέφει τις καθολικές δηλώσεις. */
 AstNode *ir_globals(void) { return global_declarations; }
+
+/* Επιστρέφει τη λίστα συναρτήσεων. */
 IrFunction *ir_functions(void) { return first_function; }
 
+/* Εκτυπώνει την ενδιάμεση αναπαράσταση. */
 void ir_print(FILE *stream)
 {
     IrFunction *function;
@@ -60,6 +69,7 @@ void ir_print(FILE *stream)
     }
 }
 
+/* Αποδεσμεύει όλη την ενδιάμεση αναπαράσταση. */
 void ir_finish(void)
 {
     IrFunction *function = first_function;

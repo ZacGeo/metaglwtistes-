@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Τερματίζει αν αποτύχει δέσμευση μνήμης. */
 static void die(void) { fprintf(stderr, "Out of memory\n"); exit(EXIT_FAILURE); }
 
+/* Δημιουργεί και αρχικοποιεί έναν κόμβο AST. */
 AstNode *ast_new(AstKind kind, int line, const char *text)
 {
     AstNode *node = calloc(1, sizeof(*node));
@@ -19,6 +21,7 @@ AstNode *ast_new(AstKind kind, int line, const char *text)
     return node;
 }
 
+/* Δημιουργεί ακέραια σταθερά. */
 AstNode *ast_int(long long value, int line)
 {
     AstNode *node = ast_new(AST_INT, line, NULL);
@@ -27,6 +30,7 @@ AstNode *ast_int(long long value, int line)
     return node;
 }
 
+/* Δημιουργεί πραγματική σταθερά. */
 AstNode *ast_float(double value, int line)
 {
     AstNode *node = ast_new(AST_FLOAT, line, NULL);
@@ -35,6 +39,7 @@ AstNode *ast_float(double value, int line)
     return node;
 }
 
+/* Δημιουργεί χαρακτήρα ή συμβολοσειρά. */
 AstNode *ast_text(AstKind kind, const char *value, Type *type, int line)
 {
     AstNode *node = ast_new(kind, line, value);
@@ -62,6 +67,7 @@ AstNode *ast_text(AstKind kind, const char *value, Type *type, int line)
     return node;
 }
 
+/* Δημιουργεί λίστα αρχικοποίησης. */
 AstNode *ast_init_list(AstNode *items, int line)
 {
     AstNode *node = ast_new(AST_INIT_LIST, line, NULL);
@@ -71,6 +77,7 @@ AstNode *ast_init_list(AstNode *items, int line)
     return node;
 }
 
+/* Δημιουργεί μοναδιαία έκφραση. */
 AstNode *ast_unary(const char *op, AstNode *operand, Type *type, int line)
 {
     AstNode *node = ast_new(AST_UNARY, line, op);
@@ -78,6 +85,7 @@ AstNode *ast_unary(const char *op, AstNode *operand, Type *type, int line)
     return node;
 }
 
+/* Δημιουργεί δυαδική έκφραση. */
 AstNode *ast_binary(const char *op, AstNode *left, AstNode *right, Type *type, int line)
 {
     AstNode *node = ast_new(AST_BINARY, line, op);
@@ -85,6 +93,7 @@ AstNode *ast_binary(const char *op, AstNode *left, AstNode *right, Type *type, i
     return node;
 }
 
+/* Προσθέτει κόμβο στο τέλος μιας λίστας AST. */
 AstNode *ast_append(AstNode *list, AstNode *item)
 {
     AstNode *tail;
@@ -94,6 +103,7 @@ AstNode *ast_append(AstNode *list, AstNode *item)
     return list;
 }
 
+/* Δημιουργεί μετατροπή τύπου και διπλώνει σταθερές. */
 AstNode *ast_cast(AstNode *node, Type *destination, int line)
 {
     AstNode *cast;
@@ -115,6 +125,7 @@ AstNode *ast_cast(AstNode *node, Type *destination, int line)
     return cast;
 }
 
+/* Επιστρέφει το όνομα ενός είδους κόμβου. */
 const char *ast_kind_name(AstKind kind)
 {
     static const char *names[] = { "PROGRAM", "FUNCTION", "BLOCK", "DECL", "EMPTY",
@@ -124,6 +135,7 @@ const char *ast_kind_name(AstKind kind)
     return names[(int)kind];
 }
 
+/* Εκτυπώνει αναδρομικά το AST. */
 void ast_print(FILE *stream, const AstNode *node, int indent)
 {
     int i;
@@ -141,6 +153,7 @@ void ast_print(FILE *stream, const AstNode *node, int indent)
     }
 }
 
+/* Αποδεσμεύει αναδρομικά το AST. */
 void ast_free(AstNode *node)
 {
     while (node) {

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Ζωντανό διάστημα μιας προσωρινής τιμής. */
 typedef struct Temporary {
     AstNode *node;
     int birth;
@@ -11,6 +12,7 @@ typedef struct Temporary {
     int degree;
 } Temporary;
 
+/* Κατάσταση συλλογής προσωρινών τιμών. */
 typedef struct Builder {
     Temporary *items;
     int count;
@@ -18,12 +20,14 @@ typedef struct Builder {
     int position;
 } Builder;
 
+/* Τερματίζει αν αποτύχει δέσμευση μνήμης. */
 static void die(void)
 {
     fputs("Out of memory\n", stderr);
     exit(EXIT_FAILURE);
 }
 
+/* Ελέγχει αν ο κόμβος παράγει προσωρινή τιμή. */
 static int produces_value(const AstNode *node)
 {
     if (!node) return 0;
@@ -38,6 +42,7 @@ static int produces_value(const AstNode *node)
     }
 }
 
+/* Καταχωρίζει νέα προσωρινή τιμή. */
 static int add_temporary(Builder *builder, AstNode *node)
 {
     Temporary *temporary;
@@ -59,6 +64,7 @@ static int add_temporary(Builder *builder, AstNode *node)
     return builder->count++;
 }
 
+/* Αριθμεί το AST και υπολογίζει τα ζωντανά διαστήματα. */
 static int number_tree(Builder *builder, AstNode *node)
 {
     int child_result[4] = { -1, -1, -1, -1 };
@@ -78,11 +84,13 @@ static int number_tree(Builder *builder, AstNode *node)
     return result;
 }
 
+/* Ελέγχει αν δύο ζωντανά διαστήματα επικαλύπτονται. */
 static int overlaps(const Temporary *left, const Temporary *right)
 {
     return left->birth <= right->death && right->birth <= left->death;
 }
 
+/* Κατανέμει καταχωρητές και θέσεις spill σε μία συνάρτηση. */
 RegisterAllocation regalloc_function(IrFunction *function, long first_spill_offset)
 {
     Builder builder = { 0 };
@@ -105,7 +113,7 @@ RegisterAllocation regalloc_function(IrFunction *function, long first_spill_offs
             }
         }
     }
-    /* Greedy graph coloring in temporary evaluation order. */
+    /* Χρωματίζει άπληστα τον γράφο παρεμβολής. */
     for (left = 0; left < builder.count; left++) {
         unsigned used = 0;
         int color;
@@ -133,6 +141,7 @@ RegisterAllocation regalloc_function(IrFunction *function, long first_spill_offs
     return result;
 }
 
+/* Επιστρέφει τον ακέραιο καταχωρητή ενός χρώματος. */
 const char *regalloc_integer_name(int color)
 {
     static const char *names[MIPS_TEMP_REGISTER_COUNT] = {
@@ -141,6 +150,7 @@ const char *regalloc_integer_name(int color)
     return color >= 0 && color < MIPS_TEMP_REGISTER_COUNT ? names[color] : "$t8";
 }
 
+/* Επιστρέφει τον float καταχωρητή ενός χρώματος. */
 const char *regalloc_float_name(int color)
 {
     static const char *names[MIPS_TEMP_REGISTER_COUNT] = {
