@@ -1,3 +1,4 @@
+/* Ενεργοποιεί τις POSIX συναρτήσεις, όπως η strdup. */
 #define _POSIX_C_SOURCE 200809L
 #include "symtab.h"
 
@@ -6,34 +7,46 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Πλήθος θέσεων του hash table κάθε εμβέλειας. */
 #define HASH_SIZE 257
 
+/* Αποθηκεύει τα σύμβολα και τη σχέση μιας εμβέλειας με τις υπόλοιπες. */
 struct Scope {
+    /* Βασικά στοιχεία και χώρος δεδομένων της εμβέλειας. */
     char *label;
     int depth;
     long next_offset;
     long total_size;
+
+    /* Στοιχεία κλάσης ή ένωσης που ανήκουν στην εμβέλεια. */
     Type *owner_type;
     AccessKind current_access;
     int anonymous_union_active;
     long anonymous_union_base;
     long anonymous_union_size;
     size_t anonymous_union_alignment;
+
+    /* Hash table και σειρά δήλωσης των συμβόλων. */
     Symbol *table[HASH_SIZE];
     Symbol *first_symbol;
     Symbol *last_symbol;
+
+    /* Δέντρο εμφωλευμένων εμβελειών. */
     Scope *parent;
     Scope *first_child;
     Scope *last_child;
     Scope *next_sibling;
 };
 
+/* Ρίζα, τρέχουσα εμβέλεια και επόμενη καθολική μετατόπιση. */
 static Scope *root_scope;
 static Scope *current_scope;
 static long global_static_offset;
 
+/* Τερματίζει το πρόγραμμα αν αποτύχει δέσμευση μνήμης. */
 static void die(void) { fprintf(stderr, "Out of memory\n"); exit(EXIT_FAILURE); }
 
+/* Υπολογίζει case-insensitive hash για ένα όνομα. */
 static unsigned hash_name(const char *name)
 {
     unsigned hash = 5381;
@@ -41,6 +54,7 @@ static unsigned hash_name(const char *name)
     return hash % HASH_SIZE;
 }
 
+/* Συγκρίνει δύο ονόματα χωρίς διάκριση πεζών-κεφαλαίων. */
 static int same_name(const char *left, const char *right)
 {
     while (*left && *right) {
@@ -49,12 +63,14 @@ static int same_name(const char *left, const char *right)
     return *left == *right;
 }
 
+/* Στρογγυλοποιεί μια μετατόπιση στο απαιτούμενο alignment. */
 static long align_up(long value, size_t alignment)
 {
     long a = alignment ? (long)alignment : 1;
     return (value + a - 1) / a * a;
 }
 
+/* Αρχικοποιεί τον πίνακα συμβόλων και δημιουργεί την global εμβέλεια. */
 void symtab_init(void)
 {
     root_scope = current_scope = NULL;
@@ -62,6 +78,7 @@ void symtab_init(void)
     symtab_enter_scope("global");
 }
 
+/* Δημιουργεί νέα θυγατρική εμβέλεια και την κάνει τρέχουσα. */
 Scope *symtab_enter_scope(const char *label)
 {
     Scope *scope = calloc(1, sizeof(*scope));
@@ -80,6 +97,7 @@ Scope *symtab_enter_scope(const char *label)
     return scope;
 }
 
+/* Ολοκληρώνει, εκτυπώνει και εγκαταλείπει την τρέχουσα εμβέλεια. */
 void symtab_leave_scope(void)
 {
     if (!current_scope) return;
@@ -92,6 +110,7 @@ void symtab_leave_scope(void)
     current_scope = current_scope->parent;
 }
 
+/* Βοηθητικές συναρτήσεις πρόσβασης στα στοιχεία των εμβελειών. */
 Scope *symtab_current_scope(void) { return current_scope; }
 Scope *symtab_root_scope(void) { return root_scope; }
 long symtab_global_size(void) { return global_static_offset; }
@@ -104,6 +123,7 @@ Type *symtab_current_owner_type(void) { return current_scope ? current_scope->ow
 void symtab_set_current_access(AccessKind access) { if (current_scope) current_scope->current_access = access; }
 AccessKind symtab_current_access(void) { return current_scope ? current_scope->current_access : ACCESS_PUBLIC; }
 
+/* Αναζητά σύμβολο μόνο σε συγκεκριμένη εμβέλεια. */
 Symbol *symtab_lookup_in_scope(Scope *scope, const char *name)
 {
     Symbol *symbol;
@@ -113,11 +133,13 @@ Symbol *symtab_lookup_in_scope(Scope *scope, const char *name)
     return NULL;
 }
 
+/* Αναζητά σύμβολο μόνο στην τρέχουσα εμβέλεια. */
 Symbol *symtab_lookup_current(const char *name)
 {
     return symtab_lookup_in_scope(current_scope, name);
 }
 
+/* Αναζητά σύμβολο από την τρέχουσα προς τις εξωτερικές εμβέλειες. */
 Symbol *symtab_lookup(const char *name)
 {
     Scope *scope;
@@ -128,6 +150,7 @@ Symbol *symtab_lookup(const char *name)
     return NULL;
 }
 
+/* Δηλώνει πλήρες σύμβολο και δεσμεύει τη θέση του στον χώρο δεδομένων. */
 Symbol *symtab_declare_full(const char *name, SymbolKind kind, Type *type,
                             StorageClass storage, int line, int defined)
 {
@@ -145,6 +168,8 @@ Symbol *symtab_declare_full(const char *name, SymbolKind kind, Type *type,
     symbol->access = current_scope->current_access;
     symbol->owner_type = current_scope->owner_type;
     symbol->size = type ? type->size : 0;
+
+    /* Τα μέλη ανώνυμης ένωσης μοιράζονται την ίδια βάση. */
     if (kind == SYMBOL_FIELD && current_scope->anonymous_union_active) {
         long end;
         symbol->offset = current_scope->anonymous_union_base;
@@ -154,6 +179,8 @@ Symbol *symtab_declare_full(const char *name, SymbolKind kind, Type *type,
         end = (long)symbol->size;
         if (end > current_scope->anonymous_union_size) current_scope->anonymous_union_size = end;
         cursor = NULL;
+
+    /* Τα μέλη κανονικής ένωσης έχουν offset μηδέν. */
     } else if (kind == SYMBOL_FIELD && current_scope->owner_type &&
         current_scope->owner_type->kind == TYPE_UNION) {
         symbol->offset = 0;
@@ -164,6 +191,8 @@ Symbol *symtab_declare_full(const char *name, SymbolKind kind, Type *type,
         cursor = NULL;
     } else if (storage == STORAGE_GLOBAL || storage == STORAGE_STATIC_LOCAL) cursor = &global_static_offset;
     else cursor = &current_scope->next_offset;
+
+    /* Υπολογίζει aligned offset και ενημερώνει το συνολικό μέγεθος. */
     if (cursor && storage != STORAGE_NONE && symbol->size > 0) {
         *cursor = align_up(*cursor, type ? type->alignment : 1);
         symbol->offset = *cursor;
@@ -176,6 +205,8 @@ Symbol *symtab_declare_full(const char *name, SymbolKind kind, Type *type,
                 current_scope->owner_type->alignment = type->alignment;
         }
     }
+
+    /* Εισάγει το σύμβολο στο hash table και στη σειρά δηλώσεων. */
     bucket = hash_name(name);
     symbol->next = current_scope->table[bucket];
     current_scope->table[bucket] = symbol;
@@ -185,6 +216,7 @@ Symbol *symtab_declare_full(const char *name, SymbolKind kind, Type *type,
     return symbol;
 }
 
+/* Δηλώνει ένα σύμβολο στην αμέσως εξωτερική εμβέλεια. */
 Symbol *symtab_declare_parent_full(const char *name, SymbolKind kind, Type *type,
                                    StorageClass storage, int line, int defined)
 {
@@ -197,6 +229,7 @@ Symbol *symtab_declare_parent_full(const char *name, SymbolKind kind, Type *type
     return symbol;
 }
 
+/* Αποθηκεύει την τιμή ενός συμβόλου σταθεράς. */
 void symtab_set_constant_value(Symbol *symbol, ConstantValueKind kind,
                                long long int_value, double float_value,
                                const char *text)
@@ -210,11 +243,13 @@ void symtab_set_constant_value(Symbol *symbol, ConstantValueKind kind,
     symbol->float_value = float_value;
 }
 
+/* Απλή δήλωση μεταβλητής για συμβατότητα με το Στάδιο 1. */
 int symtab_declare(const char *name)
 {
     return symtab_declare_full(name, SYMBOL_VARIABLE, type_error(), STORAGE_NONE, 0, 1) ? 0 : -1;
 }
 
+/* Συνδέει μια εμβέλεια με τον τύπο κλάσης ή ένωσης που περιγράφει. */
 void symtab_set_scope_type(Scope *scope, Type *type)
 {
     if (scope) {
@@ -223,6 +258,7 @@ void symtab_set_scope_type(Scope *scope, Type *type)
     }
 }
 
+/* Ορίζει βασική κλάση και αρχικό offset για τα κληρονομημένα μέλη. */
 void symtab_set_class_parent(Type *derived, Type *base, int line)
 {
     (void)line;
@@ -235,6 +271,7 @@ void symtab_set_class_parent(Type *derived, Type *base, int line)
     derived->size = (size_t)current_scope->total_size;
 }
 
+/* Αναζητά μέλος σε έναν τύπο και στις βασικές κλάσεις του. */
 Symbol *symtab_lookup_member(Type *type, const char *name, Type **declaring_type)
 {
     Type *cursor;
@@ -249,17 +286,20 @@ Symbol *symtab_lookup_member(Type *type, const char *name, Type **declaring_type
     return NULL;
 }
 
+/* Επιστρέφει το πρώτο δηλωμένο μέλος ενός τύπου. */
 Symbol *symtab_first_member(Type *type)
 {
     Scope *scope = type ? (Scope *)type->members : NULL;
     return scope ? scope->first_symbol : NULL;
 }
 
+/* Επιστρέφει το επόμενο σύμβολο με βάση τη σειρά δήλωσης. */
 Symbol *symtab_next_declared(Symbol *symbol)
 {
     return symbol ? symbol->order_next : NULL;
 }
 
+/* Αρχίζει τη διάταξη μιας ανώνυμης ένωσης. */
 void symtab_begin_anonymous_union(void)
 {
     if (!current_scope || current_scope->anonymous_union_active) return;
@@ -269,6 +309,7 @@ void symtab_begin_anonymous_union(void)
     current_scope->anonymous_union_alignment = 1;
 }
 
+/* Ολοκληρώνει την ανώνυμη ένωση και ενημερώνει offsets και μέγεθος. */
 void symtab_end_anonymous_union(void)
 {
     long base;
@@ -297,6 +338,7 @@ void symtab_end_anonymous_union(void)
     current_scope->anonymous_union_active = 0;
 }
 
+/* Μετατρέπει την κατηγορία συμβόλου σε εκτυπώσιμο όνομα. */
 const char *symbol_kind_name(SymbolKind kind)
 {
     static const char *names[] = { "type", "constant", "variable", "function", "parameter",
@@ -304,18 +346,21 @@ const char *symbol_kind_name(SymbolKind kind)
     return names[(int)kind];
 }
 
+/* Μετατρέπει την κατηγορία αποθήκευσης σε εκτυπώσιμο όνομα. */
 const char *storage_class_name(StorageClass storage)
 {
     static const char *names[] = { "none", "global", "stack", "static-local", "param-value", "param-ref", "member" };
     return names[(int)storage];
 }
 
+/* Μετατρέπει το επίπεδο πρόσβασης σε εκτυπώσιμο όνομα. */
 const char *access_kind_name(AccessKind access)
 {
     static const char *names[] = { "private", "protected", "public" };
     return names[(int)access];
 }
 
+/* Εκτυπώνει τα σύμβολα και τον χώρο δεδομένων μιας εμβέλειας. */
 void symtab_print_scope(const Scope *scope)
 {
     int bucket, count = 0;
@@ -348,6 +393,7 @@ void symtab_print_scope(const Scope *scope)
     if (!count) puts("(empty)");
 }
 
+/* Εκτυπώνει αναδρομικά ολόκληρο το δέντρο εμβελειών. */
 static void print_tree(const Scope *scope)
 {
     const Scope *child;
@@ -356,8 +402,10 @@ static void print_tree(const Scope *scope)
     for (child = scope->first_child; child; child = child->next_sibling) print_tree(child);
 }
 
+/* Ξεκινά την εκτύπωση από την global εμβέλεια. */
 void symtab_print_all(void) { print_tree(root_scope); }
 
+/* Εφαρμόζει visitor σε όλα τα σύμβολα όλων των εμβελειών. */
 static void visit_tree(Scope *scope, void (*visitor)(Symbol *, void *), void *context)
 {
     int bucket;
@@ -372,11 +420,13 @@ static void visit_tree(Scope *scope, void (*visitor)(Symbol *, void *), void *co
         visit_tree(child, visitor, context);
 }
 
+/* Δημόσια διεπαφή διάσχισης των συμβόλων. */
 void symtab_visit_symbols(void (*visitor)(Symbol *, void *), void *context)
 {
     visit_tree(root_scope, visitor, context);
 }
 
+/* Αποδεσμεύει αναδρομικά μια εμβέλεια, τα παιδιά και τα σύμβολά της. */
 static void free_scope(Scope *scope)
 {
     int bucket;
@@ -389,6 +439,7 @@ static void free_scope(Scope *scope)
     free(scope->label); free(scope);
 }
 
+/* Καταστρέφει ολόκληρο τον πίνακα συμβόλων. */
 void symtab_finish(void)
 {
     while (current_scope) current_scope = current_scope->parent;

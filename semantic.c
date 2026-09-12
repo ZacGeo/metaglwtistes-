@@ -1,3 +1,4 @@
+/* Ενεργοποιεί POSIX δηλώσεις που χρησιμοποιεί το αρχείο. */
 #define _POSIX_C_SOURCE 200809L
 #include "semantic.h"
 
@@ -7,17 +8,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Κατάσταση της τρέχουσας σημασιολογικής ανάλυσης. */
 static int errors;
 static int loop_depth;
 static Type *function_result;
 static Type *function_class;
 
+/* Επιστρέφει αριθμητική σταθερά ως double. */
 static double constant_number(const AstNode *node)
 {
     return node->constant_kind == CONST_VALUE_FLOAT
         ? node->float_value : (double)node->int_value;
 }
 
+/* Χαρακτηρίζει έναν κόμβο ως ακέραια σταθερά. */
 static void set_integer_constant(AstNode *node, long long value)
 {
     node->is_constant = 1;
@@ -25,6 +29,7 @@ static void set_integer_constant(AstNode *node, long long value)
     node->int_value = value;
 }
 
+/* Αποθηκεύει σταθερή αριθμητική τιμή στον σωστό τύπο. */
 static void set_numeric_constant(AstNode *node, Type *type, double value)
 {
     node->is_constant = 1;
@@ -37,10 +42,12 @@ static void set_numeric_constant(AstNode *node, Type *type, double value)
     }
 }
 
+/* Αρχικοποίηση, τερματισμός και πλήθος σημασιολογικών σφαλμάτων. */
 void semantic_init(void) { errors = 0; loop_depth = 0; function_result = NULL; function_class = NULL; }
 void semantic_finish(void) {}
 int semantic_error_count(void) { return errors; }
 
+/* Εκτυπώνει σημασιολογικό σφάλμα και τερματίζει άμεσα. */
 void semantic_error(int line, const char *format, ...)
 {
     va_list arguments;
@@ -52,6 +59,7 @@ void semantic_error(int line, const char *format, ...)
     exit(EXIT_FAILURE);
 }
 
+/* Βρίσκει ένα όνομα τύπου στον πίνακα συμβόλων. */
 Type *semantic_resolve_type(const char *name, int line)
 {
     Symbol *symbol = symtab_lookup(name);
@@ -60,6 +68,7 @@ Type *semantic_resolve_type(const char *name, int line)
     return symbol->type;
 }
 
+/* Δηλώνει σύμβολο και ελέγχει διπλή δήλωση. */
 Symbol *semantic_declare(const char *name, SymbolKind kind, Type *type,
                          StorageClass storage, int line, int defined)
 {
@@ -69,6 +78,7 @@ Symbol *semantic_declare(const char *name, SymbolKind kind, Type *type,
     return symbol;
 }
 
+/* Δηλώνει συνάρτηση ή ελέγχει το πρωτότυπό της. */
 Symbol *semantic_declare_function(const char *name, Type *type, int line, int definition)
 {
     Symbol *old = symtab_lookup_current(name);
@@ -82,6 +92,7 @@ Symbol *semantic_declare_function(const char *name, Type *type, int line, int de
     return old;
 }
 
+/* Ελέγχει και καταχωρίζει ορισμό μεθόδου κλάσης. */
 Symbol *semantic_declare_method(Type *owner, const char *name, Type *type,
                                 int line, int definition)
 {
@@ -99,6 +110,7 @@ Symbol *semantic_declare_method(Type *owner, const char *name, Type *type,
     return method;
 }
 
+/* Ελέγχει αν ένα πρωτότυπο απέκτησε ορισμό. */
 static void verify_prototype(Symbol *symbol, void *context)
 {
     (void)context;
@@ -108,11 +120,13 @@ static void verify_prototype(Symbol *symbol, void *context)
                        symbol->kind == SYMBOL_METHOD ? "method" : "function", symbol->name);
 }
 
+/* Ελέγχει όλα τα πρωτότυπα του προγράμματος. */
 void semantic_verify_all_prototypes(void)
 {
     symtab_visit_symbols(verify_prototype, NULL);
 }
 
+/* Ελέγχει private, protected και public πρόσβαση. */
 static int member_accessible(const Symbol *member, const Type *declaring)
 {
     if (!member || !declaring) return 0;
@@ -122,6 +136,7 @@ static int member_accessible(const Symbol *member, const Type *declaring)
     return type_is_derived_from(function_class, declaring);
 }
 
+/* Επιλύει αναγνωριστικό και δημιουργεί τον κόμβο AST του. */
 AstNode *semantic_identifier(const char *name, int line)
 {
     Symbol *symbol = symtab_lookup(name);
@@ -153,6 +168,7 @@ AstNode *semantic_identifier(const char *name, int line)
     return node;
 }
 
+/* Ελέγχει δυαδικό τελεστή και υπολογίζει σταθερές εκφράσεις. */
 AstNode *semantic_binary(const char *op, AstNode *left, AstNode *right, int line)
 {
     Type *result;
@@ -206,6 +222,7 @@ AstNode *semantic_binary(const char *op, AstNode *left, AstNode *right, int line
     }
 }
 
+/* Ελέγχει μοναδιαίο τελεστή και παράγει τον αντίστοιχο κόμβο. */
 AstNode *semantic_unary(const char *op, AstNode *operand, int line)
 {
     Type *result = operand->type;
@@ -233,6 +250,7 @@ AstNode *semantic_unary(const char *op, AstNode *operand, int line)
     }
 }
 
+/* Ελέγχει ανάθεση και εισάγει αναγκαία μετατροπή τύπου. */
 AstNode *semantic_assignment(AstNode *left, AstNode *right, int line)
 {
     AstNode *node;
@@ -244,6 +262,7 @@ AstNode *semantic_assignment(AstNode *left, AstNode *right, int line)
     return node;
 }
 
+/* Ελέγχει πλήθος, τύπους και τρόπο περάσματος παραμέτρων. */
 AstNode *semantic_call(AstNode *function, AstNode *arguments, int line)
 {
     Type *type = function->type;
@@ -265,6 +284,7 @@ AstNode *semantic_call(AstNode *function, AstNode *arguments, int line)
     return node;
 }
 
+/* Ελέγχει προσπέλαση πίνακα και τον τύπο του δείκτη. */
 AstNode *semantic_index(AstNode *array, AstNode *index, int line)
 {
     AstNode *node;
@@ -275,6 +295,7 @@ AstNode *semantic_index(AstNode *array, AstNode *index, int line)
     return node;
 }
 
+/* Ελέγχει πρόσβαση σε πεδίο, μέθοδο ή τιμή enum. */
 AstNode *semantic_member(AstNode *object, const char *name, int line)
 {
     Type *declaring = NULL;
@@ -301,6 +322,7 @@ AstNode *semantic_member(AstNode *object, const char *name, int line)
     return node;
 }
 
+/* Δημιουργεί το this μόνο μέσα σε μέθοδο κλάσης. */
 AstNode *semantic_this(int line)
 {
     AstNode *node;
@@ -311,6 +333,7 @@ AstNode *semantic_this(int line)
     return node;
 }
 
+/* Ελέγχει ότι τα στοιχεία μιας λίστας έχουν συμβατούς τύπους. */
 AstNode *semantic_list_literal(AstNode *elements, int line)
 {
     AstNode *element;
@@ -335,6 +358,7 @@ AstNode *semantic_list_literal(AstNode *elements, int line)
     }
 }
 
+/* Ελέγχει και εφαρμόζει CAR, CDR, CADR κ.λπ. */
 AstNode *semantic_list_function(const char *name, AstNode *argument, int line)
 {
     Type *current;
@@ -359,6 +383,7 @@ AstNode *semantic_list_function(const char *name, AstNode *argument, int line)
     return node;
 }
 
+/* Ελέγχει την length για string, πίνακα ή λίστα. */
 AstNode *semantic_length(AstNode *argument, int line)
 {
     AstNode *node;
@@ -374,16 +399,19 @@ AstNode *semantic_length(AstNode *argument, int line)
     return node;
 }
 
+/* Απαιτεί βαθμωτό τύπο σε συνθήκη ελέγχου ροής. */
 AstNode *semantic_condition(AstNode *expression, int line)
 {
     if (!expression || !type_is_scalar(expression->type)) semantic_error(line, "condition must have scalar type");
     return expression;
 }
 
+/* Καταγράφει την τρέχουσα συνάρτηση ή μέθοδο. */
 void semantic_begin_function(Type *return_type) { function_result = return_type; function_class = NULL; }
 void semantic_begin_method(Type *owner, Type *return_type) { function_result = return_type; function_class = owner; }
 void semantic_end_function(void) { function_result = NULL; function_class = NULL; }
 
+/* Ελέγχει αν όλες οι αναγκαίες διαδρομές καταλήγουν σε return. */
 static int guarantees_return(const AstNode *node)
 {
     const AstNode *cursor;
@@ -396,12 +424,14 @@ static int guarantees_return(const AstNode *node)
     return 0;
 }
 
+/* Απορρίπτει non-void συνάρτηση που μπορεί να μη δώσει αποτέλεσμα. */
 void semantic_check_function_body(const AstNode *body, int line)
 {
     if (function_result && function_result->kind != TYPE_VOID && !guarantees_return(body))
         semantic_error(line, "non-void function may finish without returning a value");
 }
 
+/* Ελέγχει την ορθότητα μιας εντολής return. */
 AstNode *semantic_return(AstNode *expression, int line)
 {
     AstNode *node = ast_new(AST_RETURN, line, NULL);
@@ -413,15 +443,18 @@ AstNode *semantic_return(AstNode *expression, int line)
     node->child[0] = expression; return node;
 }
 
+/* Ενημερώνει το βάθος εμφώλευσης βρόχων. */
 void semantic_enter_loop(void) { loop_depth++; }
 void semantic_leave_loop(void) { if (loop_depth) loop_depth--; }
 
+/* Επιτρέπει break/continue μόνο μέσα σε βρόχο. */
 AstNode *semantic_loop_jump(AstKind kind, int line)
 {
     if (!loop_depth) semantic_error(line, "%s used outside a loop", kind == AST_BREAK ? "break" : "continue");
     return ast_new(kind, line, NULL);
 }
 
+/* Ελέγχει το μέγιστο μήκος συμβολοσειράς. */
 AstNode *semantic_string_literal(const char *text, int line)
 {
     size_t logical_length = 0;
@@ -436,6 +469,7 @@ AstNode *semantic_string_literal(const char *text, int line)
     return ast_text(AST_STRING, text, type_string(), line);
 }
 
+/* Ελέγχει αναδρομικά αν ένας initializer είναι σταθερός. */
 static int initializer_is_constant(const AstNode *value)
 {
     const AstNode *item;
@@ -446,6 +480,7 @@ static int initializer_is_constant(const AstNode *value)
     return 1;
 }
 
+/* Αποθηκεύει την τιμή μιας δηλωμένης σταθεράς. */
 void semantic_store_constant(Symbol *symbol, const AstNode *value, int line)
 {
     char buffer[96];
@@ -477,6 +512,7 @@ void semantic_store_constant(Symbol *symbol, const AstNode *value, int line)
     }
 }
 
+/* Αποθηκεύει γνωστή αρχική τιμή μεταβλητής. */
 void semantic_store_initial_value(Symbol *symbol, const AstNode *value)
 {
     char buffer[96];
@@ -504,6 +540,7 @@ void semantic_store_initial_value(Symbol *symbol, const AstNode *value)
     }
 }
 
+/* Απαιτεί ακέραια σταθερή έκφραση. */
 long long semantic_require_integer_constant(const AstNode *value,
                                             const char *context, int line)
 {
@@ -512,6 +549,7 @@ long long semantic_require_integer_constant(const AstNode *value,
     return value->int_value;
 }
 
+/* Μετρά τα στοιχεία λίστας αρχικοποίησης. */
 static size_t initializer_count(const AstNode *list)
 {
     const AstNode *item;
@@ -520,9 +558,11 @@ static size_t initializer_count(const AstNode *list)
     return count;
 }
 
+/* Προδήλωση του αναδρομικού ελέγχου initializer. */
 static void validate_initializer(Type *type, AstNode *initializer,
                                  const char *name, int line);
 
+/* Υπολογίζει τη συνολική χωρητικότητα πολυδιάστατου πίνακα. */
 static size_t nested_array_capacity(const Type *type)
 {
     size_t capacity = 1;
@@ -534,12 +574,14 @@ static size_t nested_array_capacity(const Type *type)
     return capacity;
 }
 
+/* Επιστρέφει τον βασικό τύπο πολυδιάστατου πίνακα. */
 static Type *array_leaf_type(Type *type)
 {
     while (type && type->kind == TYPE_ARRAY) type = type->base;
     return type;
 }
 
+/* Ελέγχει αρχικές τιμές πεδίων κλάσης και κληρονομικότητας. */
 static void validate_aggregate_members(Type *type, AstNode **item,
                                        const char *name, int line)
 {
@@ -553,6 +595,7 @@ static void validate_aggregate_members(Type *type, AstNode **item,
     }
 }
 
+/* Ελέγχει initializer πίνακα, κλάσης, ένωσης ή βαθμωτού τύπου. */
 static void validate_initializer(Type *type, AstNode *initializer,
                                  const char *name, int line)
 {
@@ -623,6 +666,7 @@ static void validate_initializer(Type *type, AstNode *initializer,
         semantic_error(line, "initializer of '%s' has incompatible type", name);
 }
 
+/* Δημόσια είσοδος ελέγχου αρχικής τιμής δήλωσης. */
 void semantic_validate_initializer(Type *type, AstNode *initializer,
                                    const char *name, int line)
 {

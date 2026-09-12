@@ -21,6 +21,7 @@ typedef struct AstNode {
     unsigned is_constant : 1;
     ConstantValueKind constant_kind;
     char *text;
+
     char *constant_text;
     long long int_value;
     double float_value;
