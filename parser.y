@@ -118,6 +118,7 @@ static AstNode *process_declarations(Type *base, DeclItem *items, SymbolKind kin
 
 %%
 
+/* Αφετηρία grammar: global declarations και υποχρεωτική main function. */
 program
     : global_declarations main_function
     ;
@@ -184,6 +185,7 @@ dim
     | LBRACK RBRACK { $$ = dim_new(-1); }
     ;
 
+/* Δηλώσεις compile-time constants και οι αρχικές τους τιμές. */
 const_declaration
     : CONST typename
       { declaration_base_type = $2; }
@@ -226,6 +228,7 @@ init_values
     | init_value { $$ = $1; }
     ;
 
+/* Ιεραρχία τελεστών από το χαμηλότερο στο υψηλότερο precedence. */
 /* The ambiguous expression grammar from cpp.pdf is split into precedence
    levels. The accepted operators and operands remain those of CPP. */
 expression
@@ -350,6 +353,7 @@ listexpression
       { $$ = semantic_list_literal($2, yylineno); }
     ;
 
+/* Enum declarations και καταχώριση των enum members. */
 enum_declaration
     : ENUM ID
       {
@@ -393,6 +397,7 @@ initializer
     | /* empty */ { $$ = NULL; }
     ;
 
+/* Class declarations, inheritance και members/methods. */
 class_declaration
     : CLASS ID
       {
@@ -500,6 +505,7 @@ method
     : short_func_declaration
     ;
 
+/* Function prototypes, definitions και παράμετροι. */
 short_func_declaration
     : short_par_func_header SEMI
       {
@@ -549,6 +555,7 @@ nopar_func_header
     : func_header_start LPAREN RPAREN
     ;
 
+/* Union declarations και global variable declarations. */
 union_declaration
     : UNION ID
       {
@@ -585,6 +592,7 @@ func_declaration
     | full_func_declaration
     ;
 
+/* Σύνθεση function body από local declarations και statements. */
 full_func_declaration
     : full_par_func_header function_body
       {
@@ -717,6 +725,7 @@ function_body
       }
     ;
 
+/* Τοπικές δηλώσεις και εντολές ελέγχου ροής. */
 decl_statements
     : declarations statements { $$ = ast_append($1, $2); }
     | declarations { $$ = $1; }

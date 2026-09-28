@@ -1,6 +1,8 @@
 #ifndef DIAGNOSTICS_H
 #define DIAGNOSTICS_H
 
+/* Φόρτωση source και διαχείριση των γραμμών που εμφανίζονται στα errors. */
+
 /* ============================================================
    diagnostics.h  —  Διαχείριση σφαλμάτων μεταγλωττιστή CPP
    ============================================================ */
@@ -14,7 +16,8 @@ void diagnostics_lexical_error(int line, const char *message);
 void diagnostics_syntax_error(int line, const char *message);
 
 /* Μετρητές */
-int  diagnostics_lexical_count(void);
+/* Μετρητές και όριο ανάκτησης από συντακτικά σφάλματα. */
+int diagnostics_lexical_count(void);
 int  diagnostics_syntax_count(void);
 
 /* Επιστρέφει 1 αν έχουμε ήδη >= 5 συντακτικά σφάλματα */

@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
+/* Κατηγορίες τύπων που υποστηρίζει η γλώσσα. */
 typedef enum TypeKind {
     TYPE_ERROR,
     TYPE_VOID,
@@ -19,6 +20,7 @@ typedef enum TypeKind {
     TYPE_FUNCTION
 } TypeKind;
 
+/* Τρόπος μεταβίβασης παραμέτρου σε συνάρτηση ή μέθοδο. */
 typedef enum PassMode {
     PASS_VALUE,
     PASS_REFERENCE
@@ -36,6 +38,7 @@ typedef enum ConstantValueKind {
 
 typedef struct Type Type;
 
+/* Συνδεδεμένη λίστα παραμέτρων ενός function type. */
 typedef struct Parameter {
     char *name;
     Type *type;
@@ -56,6 +59,7 @@ struct Type {
     Type *parent;           /* Base class for single inheritance. */
 };
 
+/* Αρχικοποίηση του global registry των primitive και σύνθετων τύπων. */
 void types_init(void);
 void types_finish(void);
 Type *type_error(void);
@@ -68,6 +72,8 @@ Type *type_named(TypeKind kind, const char *name);
 Type *type_array(Type *element, long long length);
 Type *type_list(Type *element);
 Type *type_function(Type *result, Parameter *parameters);
+
+/* Σχέσεις κληρονομικότητας μεταξύ named class types. */
 void type_set_parent(Type *derived, Type *base);
 int type_is_derived_from(const Type *derived, const Type *base);
 
@@ -76,11 +82,14 @@ Parameter *parameter_append(Parameter *list, Parameter *item);
 Parameter *parameter_clone(const Parameter *list);
 void parameter_free(Parameter *list);
 
+/* Έλεγχοι συμβατότητας και υποβοήθηση επιλογής κοινού τύπου. */
 int type_is_numeric(const Type *type);
 int type_is_scalar(const Type *type);
 int type_equal(const Type *left, const Type *right);
 int type_assignable(const Type *destination, const Type *source);
 Type *type_common_numeric(Type *left, Type *right);
+
+/* Μετατροπή τύπων σε ονόματα και αναγνώσιμη μορφή. */
 const char *type_kind_name(TypeKind kind);
 void type_print(FILE *stream, const Type *type);
 
