@@ -4,11 +4,13 @@
 #include "ast.h"
 #include "symtab.h"
 
+/* Κύκλος ζωής και αναφορά σημασιολογικών σφαλμάτων. */
 void semantic_init(void);
 void semantic_finish(void);
 void semantic_error(int line, const char *format, ...);
 int semantic_error_count(void);
 
+/* Επίλυση τύπων και καταχώριση δηλώσεων, συναρτήσεων και μεθόδων. */
 Type *semantic_resolve_type(const char *name, int line);
 Symbol *semantic_declare(const char *name, SymbolKind kind, Type *type,
                          StorageClass storage, int line, int defined);
@@ -17,6 +19,7 @@ Symbol *semantic_declare_method(Type *owner, const char *name, Type *type,
                                 int line, int definition);
 void semantic_verify_all_prototypes(void);
 
+/* Έλεγχος εκφράσεων και δημιουργία των αντίστοιχων AST nodes. */
 AstNode *semantic_identifier(const char *name, int line);
 AstNode *semantic_binary(const char *op, AstNode *left, AstNode *right, int line);
 AstNode *semantic_unary(const char *op, AstNode *operand, int line);
@@ -30,6 +33,7 @@ AstNode *semantic_list_function(const char *name, AstNode *argument, int line);
 AstNode *semantic_length(AstNode *argument, int line);
 AstNode *semantic_condition(AstNode *expression, int line);
 
+/* Κατάσταση συνάρτησης/βρόχου και έλεγχος εντολών ελέγχου ροής. */
 void semantic_begin_function(Type *return_type);
 void semantic_begin_method(Type *owner, Type *return_type);
 void semantic_end_function(void);
@@ -38,6 +42,8 @@ AstNode *semantic_return(AstNode *expression, int line);
 void semantic_enter_loop(void);
 void semantic_leave_loop(void);
 AstNode *semantic_loop_jump(AstKind kind, int line);
+
+/* Constants και initializers: validation, folding και αποθήκευση τιμών. */
 AstNode *semantic_string_literal(const char *text, int line);
 void semantic_store_constant(Symbol *symbol, const AstNode *value, int line);
 void semantic_store_initial_value(Symbol *symbol, const AstNode *value);

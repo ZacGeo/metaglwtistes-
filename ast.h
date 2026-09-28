@@ -5,6 +5,7 @@
 
 struct Symbol;
 
+/* Όλα τα είδη κόμβων που μπορεί να περιέχει το abstract syntax tree. */
 typedef enum AstKind {
     AST_PROGRAM, AST_FUNCTION, AST_BLOCK, AST_DECL, AST_EMPTY,
     AST_IDENTIFIER, AST_INT, AST_FLOAT, AST_CHAR, AST_STRING, AST_LIST,
@@ -13,6 +14,7 @@ typedef enum AstKind {
     AST_BREAK, AST_CONTINUE, AST_INIT_LIST
 } AstKind;
 
+/* Κόμβος AST με κοινά πεδία για εκφράσεις, δηλώσεις και εντολές. */
 typedef struct AstNode {
     AstKind kind;
     Type *type;
@@ -33,6 +35,7 @@ typedef struct AstNode {
     struct AstNode *next;
 } AstNode;
 
+/* Κατασκευαστές κόμβων που χρησιμοποιούνται από τον parser και το semantic pass. */
 AstNode *ast_new(AstKind kind, int line, const char *text);
 AstNode *ast_int(long long value, int line);
 AstNode *ast_float(double value, int line);
@@ -42,6 +45,8 @@ AstNode *ast_unary(const char *op, AstNode *operand, Type *type, int line);
 AstNode *ast_binary(const char *op, AstNode *left, AstNode *right, Type *type, int line);
 AstNode *ast_append(AstNode *list, AstNode *item);
 AstNode *ast_cast(AstNode *node, Type *destination, int line);
+
+/* Βοηθητικές λειτουργίες εκτύπωσης, ονομασίας και αποδέσμευσης του AST. */
 void ast_print(FILE *stream, const AstNode *node, int indent);
 void ast_free(AstNode *node);
 const char *ast_kind_name(AstKind kind);
